@@ -1,5 +1,7 @@
 # Rekonstruktionsbericht
 
+> Historischer Bericht zur ersten Version. Die feste Synonym-/Assoziationsbewertung wurde am 16.11.2026 durch fastText ersetzt; aktueller Stand und Validierung: [MODEL-UPDATE.md](MODEL-UPDATE.md).
+
 Untersuchungsdatum: 16.11.2026. Ziel: https://linxicon.com. Umfang: öffentlich ausgelieferte Seiten und JavaScript-Artefakte. Keine Konten, privaten Daten oder internen APIs untersucht.
 
 ## Methode und REA

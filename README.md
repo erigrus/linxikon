@@ -1,57 +1,70 @@
 # Linxikon
 
-Ein deutsches Wortverbindungsspiel, inspiriert von [Linxicon](https://linxicon.com) von Trainwreck Labs. Eigenständige Implementierung; keine offizielle Übersetzung und keine Verbindung zum Original.
+Deutsches Wortverbindungsspiel, inspiriert von [Linxicon](https://linxicon.com). Spielen: **https://erigrus.github.io/linxikon/**. Eigenständige Implementierung; keine Verbindung zu Linxicon oder Kontexto.
 
-Verbinde zwei vorgegebene Wörter durch verwandte Begriffe. Jeder neue Begriff wird mit allen vorhandenen Wörtern verglichen. Die beiden Seiten müssen durch einen durchgehenden Pfad verbunden werden, bevor 50 Wörter auf dem Brett liegen.
+Verbinde zwei vorgegebene Wörter durch verwandte Begriffe. Jeder neue Begriff wird mit allen vorhandenen Wörtern verglichen. Gewinne mit einer durchgehenden Verbindung, bevor 50 Wörter auf dem Brett liegen.
 
-## Spielen
+- Tagesrätsel, zufällige Übungsrätsel, Datumswahl für vergangene Rätsel.
+- Ziehbares SVG-Wortnetz, Beziehungen per Klick oder Tastatur, exakte Nähe mit einer Nachkommastelle.
+- Hinweise ab 25 Wörtern, Gewinn/Verlust, Ergebnis teilen, dunkler Modus.
+- Fortschritt, Einstellungen und Statistik lokal im Browser; kein Konto, keine API-Schlüssel.
 
-- Tagesrätsel (lokaler Tageswechsel), zufällige Übungsrätsel und Datumswahl für vergangene Rätsel.
-- Interaktives SVG-Wortnetz, ziehbare Knoten und Beziehungen per Mausklick oder Tastatur.
-- Hinweise ab 25 Wörtern im Tagesrätsel, Gewinn- und Verlustzustand, Ergebnis teilen.
-- Fortschritt, Einstellungen und Statistik im Browser; keine Anmeldung, kein Backend.
-- Responsive Oberfläche, dunkler Modus, deutsche Meldungen und Umlaute.
+## Bedeutungsmodell – dieselbe öffentliche Basis wie Kontexto
 
-## Deutsche Wortbeziehungen und Grenzen
+[Kontexto nennt `cc.de.300.bin`](https://kontexto.de/blog/wie-funktioniert-fasttext/) von Meta fastText als Grundlage. Linxikon verwendet den dazu veröffentlichten **`cc.de.300.vec.gz`-Export**: 300-dimensionale deutsche Vektoren, trainiert auf Common Crawl und Wikipedia. [Offizielle Modellbeschreibung und Download](https://fasttext.cc/docs/en/crawl-vectors.html).
 
-`data/lexicon.json` enthält 32.901 gefilterte Synonymgruppen aus OpenThesaurus sowie 107 redaktionelle Assoziationsgruppen. Insgesamt stehen ungefähr 89.000 Einträge zur Verfügung. Die Daten bleiben getrennt vom Programmcode und sind austauschbar.
+Die alte Bewertung mit festen Synonym- und Themenpunkten (86 % / 64 % / 0 %) wurde vollständig ersetzt:
 
-- Gemeinsame Synonymgruppe: 86 %.
-- Gemeinsame Assoziationsgruppe: 64 %.
-- Keine gemeinsame Gruppe: 0 % (keine Aussage darüber, ob im wirklichen Sprachgebrauch eine Beziehung besteht).
-- Verbindungen entstehen ab 39,95 %. Eine Kante bleibt, wenn sie für mindestens einen Endpunkt zu dessen fünf stärksten Verbindungen gehört.
+1. Die ersten 600.000 Modellzeilen werden mit einer Wortliste aus OpenThesaurus und den 50.000 häufigsten deutschen wordfreq-Einträgen abgeglichen. Häufige gebeugte Formen und Komposita sind dadurch ebenfalls enthalten.
+2. Bei mehreren Schreibweisen gewinnt die zuerst beobachtete, häufigste Originalschreibung. Eingaben werden ohne Beachtung der Groß-/Kleinschreibung verglichen.
+3. **All-but-the-Top:** Mittelwert und drei Hauptkomponenten werden auf den ersten 15.500 akzeptierten Wörtern berechnet und von allen Vektoren entfernt. [Kontexto beschreibt dieselbe Art der Bereinigung](https://kontexto.de/blog/all-but-the-top-vektoren-entzerren/).
+4. 80.751 Vektoren mit je 300 Dimensionen werden pro Zeile zu int8 quantisiert. Der Browser lädt 20 versionierte, SHA-256-geprüfte Datenblöcke (zusammen etwa 24 MB) und berechnet echte Kosinus-Ähnlichkeiten. Er benötigt weder das große Gesamtmodell noch einen Server für Eingaben.
 
-Das Original nutzt ConceptNet-Numberbatch-Vektoren und englisches WordNet. Diese Ausgabe rekonstruiert diesen nicht veröffentlichten Serveralgorithmus **nicht**. Die lokale deutsche Datenbasis ist deterministisch, einfacher und begrenzter. Mehrdeutigkeiten und Lücken sind möglich. Keine KI-Dienste oder API-Schlüssel erforderlich.
+**Gleiche öffentliche Modellbasis bedeutet keine identischen Kontexto-Ränge.** Wortauswahl, Referenzmenge, Schreibweisen und Komprimierung sind eigene Entscheidungen. Die proprietären Rätsel-/Rangtabellen von Kontexto werden nicht verwendet. Der Text-Export enthält keine Subword-Matrizen für neue, unbekannte Wörter; fehlende Wörter werden ausdrücklich gemeldet.
 
-Der Rätselkatalog enthält 28 geprüfte Wortpaare. Das Tagesrätsel rotiert alle 28 Tage; Üben zieht zufällig aus demselben Katalog. Alle Wortpaare haben einen überprüften Lösungsweg. Die Statistik zählt abgeschlossene Runden; sie synchronisiert sich nicht zwischen Geräten. Tagesrätsel verwenden die lokale Zeitzone des Geräts.
+Werte liegen zwischen −100 % und 100 %. Sie beschreiben Kontextnähe, keine Wahrscheinlichkeit oder reine Synonymie. Auch Gegenteile können ähnlich sein. Ab **29,95 % (angezeigt als 30,0 %)** entsteht eine Verbindung. Dieser Schwellenwert ist auf die bereinigten Vektoren abgestimmt. Je Wort bleiben die fünf stärksten Verbindungen erhalten; Auswahl durch einen Endpunkt genügt.
+
+Die 28 Tagespaare rotieren im festen Katalog; Üben wählt zufällig daraus. Für jedes Paar wird beim Datenbau ein Lösungspfad ausschließlich anhand der tatsächlichen Vektorwerte gesucht und mit den ausgelieferten quantisierten Daten getestet. Hinweise verwenden diese Pfade. Während des Spiels können andere gültige Lösungen gefunden werden.
+
+## Spielstände beim Modellwechsel
+
+Neue Runden und Statistiken verwenden `linxikon:fasttext-de-abtt3-v1:*`. Alte Spielstände unter `linxikon:*` bleiben erhalten und werden nicht mit geänderten Beziehungen neu interpretiert. Einstellungen bleiben bestehen. Die Tagesauswahl nutzt die lokale Gerätezeitzone; Fortschritt synchronisiert sich nicht zwischen Geräten.
 
 ## Entwicklung
 
-Node.js 22 oder neuer. Keine npm-Abhängigkeiten erforderlich.
+Node.js 22 oder neuer, keine npm-Abhängigkeiten nötig:
 
 ```sh
 npm test
 npm run build
 ```
 
-`dist/` enthält die gesamte statische Website. Alle Asset-Pfade sind relativ und funktionieren unter `/linxikon/`.
+`dist/` enthält die statische Website mit relativen Asset-Pfaden für `/linxikon/`.
 
-Wortdaten neu erzeugen:
+### Vektordaten reproduzieren
+
+Nur der Datenbau braucht Python, numpy und wordfreq 3.1.1. Diese Werkzeuge werden nicht an Browser ausgeliefert.
 
 ```sh
-curl -L https://www.openthesaurus.de/export/OpenThesaurus-Textversion.zip -o /tmp/OpenThesaurus.zip
-python3 scripts/build-data.py /tmp/OpenThesaurus.zip
+python3 -m venv /tmp/linxikon-build
+/tmp/linxikon-build/bin/pip install numpy wordfreq==3.1.1
+curl -L https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.de.300.vec.gz -o /tmp/cc.de.300.vec.gz
+OPENBLAS_NUM_THREADS=4 /tmp/linxikon-build/bin/python scripts/build-embeddings.py /tmp/cc.de.300.vec.gz --cache /tmp/selected.npz
+npm test
+npm run build
 ```
+
+Der Builder verarbeitet nur die ersten 600.000 Zeilen und speichert einen nach dem Wortfilter versionierten Extraktionscache. `manifest.json` dokumentiert Quellmodell, Transformation, Wortauswahl, Prüfsummen und Routingpfade. `data/lexicon.json` und `data/associations.txt` dienen nur der historischen Wortauswahl, **nicht** der Ähnlichkeitsbewertung. Mit `scripts/build-data.py` lässt sich der ursprüngliche OpenThesaurus-Filter erneut erzeugen.
 
 ## GitHub Pages
 
-Repository → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-
-Der Workflow `.github/workflows/pages.yml` testet, baut und veröffentlicht bei jedem Push auf `main`. Er kann außerdem unter **Actions → Publish Linxikon to GitHub Pages → Run workflow** gestartet werden. Die veröffentlichte Adresse wird vom Deploy-Schritt ausgegeben. Für private Repositories kann ein kostenpflichtiger GitHub-Plan erforderlich sein. Der Pages-Zugriff der verbundenen App ist unabhängig vom Schreibzugriff auf Repository-Dateien.
+[Settings → Pages](https://github.com/erigrus/linxikon/settings/pages) → Source: **GitHub Actions**. `.github/workflows/pages.yml` prüft, baut und veröffentlicht jeden Push auf `main`. Die Workflow-Ausgabe bestätigt die tatsächliche Veröffentlichung.
 
 ## Quellen und Lizenzen
 
-- Spielidee: [Linxicon / Trainwreck Labs](https://linxicon.com). Design und Code dieser Ausgabe wurden neu implementiert; fremde Tracking-, Werbe- oder Kontodienste werden nicht eingebunden.
-- Wörter: [OpenThesaurus](https://www.openthesaurus.de), © Daniel Naber und Mitwirkende. Export vom 15.11.2026; verändert durch Entfernen von Klammerzusätzen, Kleinschreibung und Beschränkung auf einzelne alphabetische Wörter mit 3–24 Zeichen. Abgeleitete Wortdaten unter [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), vollständiger Lizenztext in `data/OPENTHESAURUS-LICENSE.txt`. Ergänzende Assoziationsdaten stehen ebenfalls unter CC BY-SA 4.0.
-- Schriftarten: DM Sans und McLaren, über Google Fonts geladen (SIL Open Font License). Systemschriften als Fallback.
-- Untersuchung: [REA / morluto](https://github.com/morluto/rea), siehe `ANALYSIS.md`.
+- Spielidee: [Linxicon / Trainwreck Labs](https://linxicon.com). Programmcode und Gestaltung wurden unabhängig implementiert. Bestehende Code-Lizenz: `LICENSE`.
+- Vektoren: Meta / fastText-Autoren, *Learning Word Vectors for 157 Languages*, Grave et al., LREC 2018. **CC BY-SA 3.0**, einschließlich der bearbeiteten Vektoren. Quelle, Veränderungen, vollständige Lizenz: `data/fasttext/NOTICE.md` und `LICENSE-CC-BY-SA-3.0.txt`.
+- Wortfilter: [OpenThesaurus](https://www.openthesaurus.de), © Daniel Naber und Mitwirkende, Export 15.11.2026, bearbeitet, **CC BY-SA 4.0**. Siehe `data/OPENTHESAURUS-LICENSE.txt`.
+- Ergänzende Wortauswahl: [wordfreq](https://github.com/rspeer/wordfreq) 3.1.1, © Robyn Speer und Mitwirkende. Häufigkeitsdaten **CC BY-SA 4.0**; Paketcode Apache 2.0. Attribution der zugrunde liegenden Korpora: `data/WORDFREQ-NOTICE.md` und `WORDFREQ-LICENSE.txt`.
+- Schriften: DM Sans und McLaren (SIL Open Font License) über Google Fonts; Systemschrift als Fallback.
+- Ursprüngliche REA-Untersuchung und Grenzen: `ANALYSIS.md`. Bericht zur Modellumstellung: `MODEL-UPDATE.md`.

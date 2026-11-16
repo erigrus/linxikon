@@ -1,43 +1,95 @@
 export const normalize = word => word.trim().toLocaleLowerCase('de-DE').normalize('NFC');
+export const MODEL_VERSION = 'fasttext-de-abtt3-v1';
+export const LINK_THRESHOLD = .2995;
+const percent = new Intl.NumberFormat('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+export const formatScore = score => score === null ? '–' : percent.format(score * 100) + ' %';
 export class Lexicon {
-  constructor(data) {
-    this.groups = [...data.synonyms, ...data.associations];
-    this.index = new Map(); this.display = new Map(); this.cache = new Map();
-    this.groups.forEach((words,id) => words.forEach(word => {
-      if (!this.index.has(word)) this.index.set(word, []);
-      this.index.get(word).push(id);
-    }));
-    this.synonymCount = data.synonyms.length;
+  constructor(manifest, vectors) {
+    if (manifest.version !== MODEL_VERSION || manifest.dimensions !== 300 ||
+        manifest.count !== manifest.words.length || !(vectors instanceof Int8Array) ||
+        vectors.length !== manifest.count * manifest.dimensions) {
+      throw new Error('Ungültige oder unvollständige Wortvektoren');
+    }
+    this.words = manifest.words;
+    this.dimensions = manifest.dimensions;
+    this.index = new Map(this.words.map((word, i) => [word, i]));
+    if (this.index.size !== manifest.count) throw new Error('Doppelte Wörter im Modell');
+    this.vectors = vectors;
+    this.norms = new Float64Array(manifest.count);
+    this.routes = manifest.routes;
+    this.cache = new Map();
+    for (let row = 0; row < manifest.count; row++) {
+      let sum = 0, offset = row * this.dimensions;
+      for (let k = 0; k < this.dimensions; k++) sum += vectors[offset+k] ** 2;
+      if (!sum) throw new Error('Leerer Wortvektor');
+      this.norms[row] = Math.sqrt(sum);
+    }
   }
   has(word) { return this.index.has(normalize(word)); }
-  score(a,b) {
-    a=normalize(a); b=normalize(b);
-    if(a===b) return 1;
-    const key=[a,b].sort().join('|');
-    if(this.cache.has(key)) return this.cache.get(key);
-    const right=new Set(this.index.get(b)||[]);
-    let score=0;
-    for(const id of this.index.get(a)||[]) if(right.has(id)) score=Math.max(score,id<this.synonymCount ? .86 : .64);
-    this.cache.set(key,score); return score;
+  score(a, b) {
+    const i = this.index.get(normalize(a)), j = this.index.get(normalize(b));
+    if (i === undefined || j === undefined) return null;
+    if (i === j) return 1;
+    const key = i < j ? i + ':' + j : j + ':' + i;
+    if (this.cache.has(key)) return this.cache.get(key);
+    let dot = 0, x = i * this.dimensions, y = j * this.dimensions;
+    for (let k = 0; k < this.dimensions; k++) dot += this.vectors[x+k] * this.vectors[y+k];
+    const score = Math.max(-1, Math.min(1, dot / (this.norms[i] * this.norms[j])));
+    if (this.cache.size >= 8192) this.cache.clear();
+    this.cache.set(key, score);
+    return score;
   }
-  neighbors(word) {
-    const found=new Set();
-    for(const id of this.index.get(word)||[]) for(const w of this.groups[id]) if(w!==word) found.add(w);
-    return [...found];
+  route(start, end) {
+    start = normalize(start); end = normalize(end);
+    const path = this.routes[start + '|' + end];
+    if (path) return [...path];
+    const reverse = this.routes[end + '|' + start];
+    if (reverse) return [...reverse].reverse();
+    const score = this.score(start, end);
+    return score !== null && score >= LINK_THRESHOLD ? [start, end] : [];
   }
-  route(start,end) {
-    const queue=[start], parent=new Map([[start,null]]);
-    for(let i=0;i<queue.length;i++) {
-      const w=queue[i]; if(w===end) { const path=[]; for(let p=end;p!==null;p=parent.get(p))path.unshift(p); return path; }
-      for(const next of this.neighbors(w)) if(!parent.has(next)){parent.set(next,w);queue.push(next);}
+}
+
+// Load versioned shards with bounded concurrency. A failed shard never starts a game.
+export async function loadLexicon(onProgress = () => {}, fetcher = fetch) {
+  const response = await fetcher('./data/fasttext/manifest.json', {cache: 'no-cache'});
+  if (!response.ok) throw new Error('Wortmodell nicht erreichbar');
+  const manifest = await response.json();
+  if (manifest.version !== MODEL_VERSION || manifest.dimensions !== 300 ||
+      !Number.isSafeInteger(manifest.count) || manifest.count < 1 || manifest.count > 200000 ||
+      !Array.isArray(manifest.shards) || manifest.shards.length > 100 ||
+      manifest.shards.some(s => !/^vectors-\d{2}\.i8$/.test(s.file) || !Number.isSafeInteger(s.rows) || s.rows < 1) ||
+      manifest.shards.reduce((n, s) => n + s.rows, 0) !== manifest.count) {
+    throw new Error('Unbekannte Modellversion');
+  }
+  const vectors = new Int8Array(manifest.count * manifest.dimensions);
+  const offsets = []; let cursor = 0;
+  manifest.shards.forEach(shard => { offsets.push(cursor); cursor += shard.rows * manifest.dimensions; });
+  let next = 0, loaded = 0;
+  onProgress(0, vectors.byteLength);
+  async function worker() {
+    while (next < manifest.shards.length) {
+      const i = next++, shard = manifest.shards[i];
+      const result = await fetcher('./data/fasttext/' + shard.file + '?sha=' + shard.sha256);
+      if (!result.ok) throw new Error('Wortvektoren konnten nicht geladen werden');
+      const bytes = await result.arrayBuffer();
+      if (bytes.byteLength !== shard.rows * manifest.dimensions) throw new Error('Unvollständige Wortvektoren');
+      if (globalThis.crypto?.subtle) {
+        const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+        const actual = [...hash].map(n => n.toString(16).padStart(2, '0')).join('');
+        if (actual !== shard.sha256) throw new Error('Prüfsumme der Wortvektoren stimmt nicht');
+      }
+      vectors.set(new Int8Array(bytes), offsets[i]);
+      loaded += bytes.byteLength; onProgress(loaded, vectors.byteLength);
     }
-    return [];
   }
+  await Promise.all(Array.from({length: Math.min(4, manifest.shards.length)}, worker));
+  return new Lexicon(manifest, vectors);
 }
 export function links(words,lexicon) {
   const all=[];
   for(let i=0;i<words.length;i++) for(let j=i+1;j<words.length;j++) {
-    const score=lexicon.score(words[i],words[j]); if(score>=.3995)all.push({a:i,b:j,score});
+    const score=lexicon.score(words[i],words[j]); if(score>=LINK_THRESHOLD)all.push({a:i,b:j,score});
   }
   const selected=new Set();
   words.forEach((_,i)=>all.filter(e=>e.a===i||e.b===i).sort((a,b)=>b.score-a.score||a.a-b.a||a.b-b.b).slice(0,5).forEach(e=>selected.add(e)));
