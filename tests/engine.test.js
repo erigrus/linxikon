@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {Lexicon,normalize,links,boardPath,PAIRS,dailyPair,dateKey} from '../engine.js';
+const lexicon=new Lexicon(JSON.parse(readFileSync(new URL('../data/lexicon.json',import.meta.url))));
+test('German normalization and dictionary',()=>{assert.equal(normalize('  BÄUME  '),'bäume');assert.ok(lexicon.has('Wasser'));assert.ok(!lexicon.has('xyzabcxyz'));});
+test('Semantic relationships are symmetric; spelling alone creates no link',()=>{assert.equal(lexicon.score('sonne','wärme'),.64);assert.equal(lexicon.score('wärme','sonne'),.64);assert.equal(lexicon.score('sonne','buch'),0);assert.equal(lexicon.score('sonne','tonne'),0);});
+test('Every shipped puzzle is solvable and needs intermediate words',()=>{for(const [a,b] of PAIRS){const route=lexicon.route(a,b);assert.ok(route.length>=3&&route.length<40,`${a} → ${b}: ${route.length}`);assert.ok(lexicon.score(a,b)<.3995);const words=[a,b,...route.slice(1,-1)],edges=links(words,lexicon);assert.ok(boardPath(words,edges).length,`${a} → ${b}`);}});
+test('Only a continuous path wins',()=>{assert.deepEqual(boardPath(['meer','wolke','wasser'],[{a:0,b:2,score:.64}]),[]);assert.deepEqual(boardPath(['meer','wolke','wasser','regen'],[{a:0,b:2},{a:2,b:3},{a:3,b:1}]),[0,2,3,1]);});
+test('Top-five rule retains an edge when either endpoint selects it',()=>{const words=['sonne','licht','wärme','sommer','himmel','stern'];const edges=links(words,lexicon);assert.ok(edges.length);for(const e of edges)assert.ok(e.score>=.3995);});
+test('Daily selection is deterministic and local date avoids UTC rollover',()=>{assert.deepEqual(dailyPair('2026-11-16'),dailyPair('2026-11-16'));assert.equal(dateKey(new Date(2026,0,2,0,1)),'2026-01-02');});
