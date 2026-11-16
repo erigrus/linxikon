@@ -43,4 +43,8 @@ Die Tagespaare stammen aus einem festen 28-Paare-Katalog. Dies ist kein Zugriff 
 
 ## Veröffentlichung
 
-Das Repository war bei Beginn leer und privat. Schreibzugriff ist vorhanden. GitHub Pages Administration wurde von GitHub mit HTTP 403 verweigert. Deshalb muss die Pages-Quelle in den Repository-Einstellungen freigeschaltet werden. Ein Workflow allein bestätigt noch keine erfolgreiche Veröffentlichung; maßgeblich ist ein erfolgreicher Pages-Deploy-Lauf.
+Das Repository war bei Beginn privat und enthielt beim abschließenden Abruf LICENSE und eine kurze README; beide wurden berücksichtigt, die bestehende Lizenz blieb erhalten. Die direkte GitHub-Pages-Administration wurde zunächst mit HTTP 403 verweigert. Nach dem Push wurde der Workflow jedoch erfolgreich ausgeführt: https://github.com/erigrus/linxikon/actions/runs/43862456682 (Test, Build, Configure Pages, Upload und Deploy erfolgreich).
+
+Veröffentlichte Adresse: https://erigrus.github.io/linxikon/
+
+Am 16.11.2026 wurden die veröffentlichte index.html und data/lexicon.json heruntergeladen und per SHA-256 mit den lokalen getesteten Dateien verglichen: beide identisch. Eine visuelle Browserprüfung bleibt ungeprüft.
