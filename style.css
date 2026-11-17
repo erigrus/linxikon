@@ -32,3 +32,7 @@
 /* Keep the entry controls reachable while larger networks gain scrollable room. */
 .board{max-height:max(420px,min(70svh,760px));overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 @media(max-width:700px){.board{max-height:max(310px,min(60svh,480px))}}
+
+.relation-reason{display:block;font-size:9px;font-weight:400;line-height:1.4;color:var(--muted);margin-top:2px}
+.score-list li{align-items:center;gap:10px}
+.score-list li:not(.is-linked) b{color:var(--muted)}

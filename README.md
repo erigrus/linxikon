@@ -24,13 +24,23 @@ Die alte Bewertung mit festen Synonym- und Themenpunkten (86 % / 64 % / 0 %) wur
 1. Die ersten 600.000 Modellzeilen werden mit einer Wortliste aus OpenThesaurus und den 50.000 häufigsten deutschen wordfreq-Einträgen abgeglichen. Häufige gebeugte Formen und Komposita sind dadurch ebenfalls enthalten.
 2. Bei mehreren Schreibweisen gewinnt die zuerst beobachtete, häufigste Originalschreibung. Eingaben werden ohne Beachtung der Groß-/Kleinschreibung verglichen.
 3. **All-but-the-Top:** Mittelwert und drei Hauptkomponenten werden auf den ersten 15.500 akzeptierten Wörtern berechnet und von allen Vektoren entfernt. [Kontexto beschreibt dieselbe Art der Bereinigung](https://kontexto.de/blog/all-but-the-top-vektoren-entzerren/).
-4. 80.751 Vektoren mit je 300 Dimensionen werden pro Zeile zu int8 quantisiert. Der Browser lädt 20 versionierte, SHA-256-geprüfte Datenblöcke (zusammen etwa 24 MB) und berechnet echte Kosinus-Ähnlichkeiten. Er benötigt weder das große Gesamtmodell noch einen Server für Eingaben.
+4. 80.751 Vektoren mit je 300 Dimensionen werden pro Zeile zu int8 quantisiert. Der Browser lädt 20 versionierte, SHA-256-geprüfte Datenblöcke (zusammen etwa 24 MB) und berechnet Kosinus-Ähnlichkeiten als ein Signal der Bewertung. Hinzu kommen etwa 2 MB Sprachdaten für Wortformen, Wortfamilien, Synonyme und Kontextkalibrierung. Er benötigt weder das große Gesamtmodell noch einen Server für Eingaben.
 
 **Gleiche öffentliche Modellbasis bedeutet keine identischen Kontexto-Ränge.** Wortauswahl, Referenzmenge, Schreibweisen und Komprimierung sind eigene Entscheidungen. Die proprietären Rätsel-/Rangtabellen von Kontexto werden nicht verwendet. Der Text-Export enthält keine Subword-Matrizen für neue, unbekannte Wörter; fehlende Wörter werden ausdrücklich gemeldet.
 
-Werte liegen zwischen −100 % und 100 %. Sie beschreiben Kontextnähe, keine Wahrscheinlichkeit oder reine Synonymie. Auch Gegenteile können ähnlich sein. Ab **29,95 % (angezeigt als 30,0 %)** entsteht eine Verbindung. Dieser Schwellenwert ist auf die bereinigten Vektoren abgestimmt. Je Wort bleiben die fünf stärksten Verbindungen erhalten; Auswahl durch einen Endpunkt genügt.
+### Verbesserte Verbindungen
 
-Die 28 Tagespaare rotieren im festen Katalog; Üben wählt zufällig daraus. Für jedes Paar wird beim Datenbau ein Lösungspfad ausschließlich anhand der tatsächlichen Vektorwerte gesucht und mit den ausgelieferten quantisierten Daten getestet. Hinweise verwenden diese Pfade. Während des Spiels können andere gültige Lösungen gefunden werden.
+Seit 17.11.2026 verwendet Semantio eine kombinierte **Verbindungsstärke von 0–100 %**. Sie ist kein reiner Kosinuswert und keine Wahrscheinlichkeit. Ab **49,95 % (angezeigt als 50,0 %)** entsteht eine Verbindung.
+
+- Erkannte Einzahl, Mehrzahl und Beugungen teilen ihre Grundform und bis zu drei häufige Vektorvertreter. Gleiche Grundformen zählen bei neuen Eingaben nur einmal und verbrauchen keinen zusätzlichen Versuch.
+- Die Kontextnähe wird je Wort relativ zu seiner Nachbarschaft bewertet. Es gilt nicht mehr derselbe rohe Kosinusgrenzwert für alle Wörter.
+- Wörterbuch-Synonyme und lexikalisch belegte Wortfamilien liefern zusätzliche Beziehungen. Das stärkt beispielsweise Arbeit–überarbeitet auch dann, wenn das Vektormodell eher an das Überarbeiten eines Textes denkt.
+- Im Seitenbereich wird der Grund angezeigt: Kontextbezug, Synonym oder Wortfamilie.
+- Die stärksten Verbindungen und ein maximales Spannwald-Gerüst bleiben sichtbar. Dadurch trennt die visuelle Ausdünnung keine tatsächlich verbundenen Teile des Netzes.
+
+Details, Quellen, Bewertung und Grenzen: [MATCHING.md](MATCHING.md). Es gibt keine wortpaarspezifischen Ausnahmeregeln. Mehrdeutige Wörter bleiben eine Grenze der Ressourcen; die Bewertung verspricht keine vollständige Sprachkenntnis.
+
+Die 28 Tagespaare rotieren im festen Katalog; Üben wählt zufällig daraus. Für jedes Paar wird beim Datenbau ein Lösungspfad ausschließlich anhand der tatsächlichen Vektorwerte gesucht und mit den ausgelieferten quantisierten Daten getestet. Hinweise verwenden verkürzte, geprüfte Pfade ohne doppelte Grundformen. Während des Spiels können andere gültige Lösungen gefunden werden.
 
 ## Spielstände und Umbenennung
 
@@ -70,11 +80,24 @@ Der Builder verarbeitet nur die ersten 600.000 Zeilen und speichert einen nach d
 
 Produkt, Repository und Pages-Adresse heißen seit 17.11.2026 Semantio. Die neue Adresse ist **https://erigrus.github.io/semantio/**. Alte GitHub-Pages-Adressen werden durch eine Repository-Umbenennung nicht automatisch weitergeleitet.
 
+### Sprachdaten reproduzieren
+
+Nach dem Vektorbau (mit dem Cache `/tmp/selected.npz` aus dem Beispiel oben):
+
+```sh
+curl -L https://raw.githubusercontent.com/michmech/lemmatization-lists/master/lemmatization-de.txt -o /tmp/lemmatization-de.txt
+curl -L https://www.ims.uni-stuttgart.de/documents/ressourcen/lexika/derivbase/derivcelex-v2.txt -o /tmp/derivcelex-v2.txt
+OPENBLAS_NUM_THREADS=4 /tmp/semantio-build/bin/python scripts/build-relationships.py --lemmas /tmp/lemmatization-de.txt --families /tmp/derivcelex-v2.txt --source-forms /tmp/selected.npz
+npm test
+npm run build
+```
+
 ## Quellen und Lizenzen
 
 - Spielidee: [Linxicon / Trainwreck Labs](https://linxicon.com). Programmcode und Gestaltung wurden unabhängig implementiert. Bestehende Code-Lizenz: `LICENSE`.
 - Vektoren: Meta / fastText-Autoren, *Learning Word Vectors for 157 Languages*, Grave et al., LREC 2018. **CC BY-SA 3.0**, einschließlich der bearbeiteten Vektoren. Quelle, Veränderungen, vollständige Lizenz: `data/fasttext/NOTICE.md` und `LICENSE-CC-BY-SA-3.0.txt`.
 - Wortfilter: [OpenThesaurus](https://www.openthesaurus.de), © Daniel Naber und Mitwirkende, Export 15.11.2026, bearbeitet, **CC BY-SA 4.0**. Siehe `data/OPENTHESAURUS-LICENSE.txt`.
 - Ergänzende Wortauswahl: [wordfreq](https://github.com/rspeer/wordfreq) 3.1.1, © Robyn Speer und Mitwirkende. Häufigkeitsdaten **CC BY-SA 4.0**; Paketcode Apache 2.0. Attribution der zugrunde liegenden Korpora: `data/WORDFREQ-NOTICE.md` und `WORDFREQ-LICENSE.txt`.
+- Zusätzliche Beziehungsdaten: deutsche Lemmaliste von Michal Boleslav Měchura (ODbL 1.0), DErivCELEX v2 / IMS Stuttgart (CC BY-SA 3.0), OpenThesaurus (CC BY-SA 4.0) und fastText-Kalibrierung (CC BY-SA 3.0). Siehe `data/relationships/NOTICE.md` und die jeweils getrennten Datenbanken.
 - Schriften: DM Sans und McLaren (SIL Open Font License) über Google Fonts; Systemschrift als Fallback.
 - Ursprüngliche REA-Untersuchung und Grenzen: `ANALYSIS.md`. Bericht zur Modellumstellung: `MODEL-UPDATE.md`.

@@ -1,5 +1,7 @@
 # Umstellung auf deutsche fastText-Wortvektoren
 
+> Historischer Bericht der ursprünglichen fastText-Bewertung. Seit 17.11.2026 kombiniert Semantio weitere Sprachdaten und eine lokale Kalibrierung. Aktuell: [MATCHING.md](MATCHING.md).
+
 16.11.2026. Anlass: Die ursprünglichen festen Synonym- und Themengruppen erkannten viele sinnvolle Beziehungen nicht. Nutzerwunsch: dieselbe Datenbasis wie Kontexto.
 
 ## Quellenbefund

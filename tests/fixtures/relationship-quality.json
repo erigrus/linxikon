@@ -1,0 +1,25 @@
+{
+  "positive": [
+    ["Arbeit", "überarbeitet"], ["arbeiten", "überarbeitet"],
+    ["Vitamin", "Gesundheit"], ["Vitamin", "Obst"],
+    ["Vitamine", "Gesundheit"], ["Vitamine", "Obst"],
+    ["Arzt", "Krankenhaus"], ["Regen", "Wolke"], ["Wasser", "Regen"],
+    ["Sonne", "Wärme"], ["Apfel", "Obst"], ["Baum", "Wald"],
+    ["Bäume", "Wald"], ["Buch", "Bücher"], ["Haus", "Häuser"],
+    ["Nährstoff", "Vitamin"], ["Hund", "Katze"], ["Auto", "Fahrzeug"],
+    ["Kaffee", "Tee"], ["Biene", "Honig"], ["Vogel", "Tier"],
+    ["Blume", "Pflanze"], ["Schloss", "Schlüssel"],
+    ["schreiben", "geschrieben"], ["lesen", "gelesen"],
+    ["heiß", "kalt"], ["Erdbeere", "Himbeere"], ["Meer", "Ozean"]
+  ],
+  "negative": [
+    ["Urlaub", "Laub"], ["Buch", "Buche"], ["Rat", "Ratte"],
+    ["Bank", "Bankett"], ["Gift", "Geschenk"], ["Maus", "Mauer"],
+    ["Sonne", "Tonne"], ["Obst", "Osten"], ["Hund", "Computer"],
+    ["Kaffee", "Flugzeug"], ["Käse", "Wolke"], ["Telefon", "Kartoffel"],
+    ["Gefühl", "Schraube"], ["Arzt", "Gitarre"], ["Brot", "Tastatur"],
+    ["Fisch", "König"], ["Sonne", "Buch"], ["Apfel", "Uhr"],
+    ["Wald", "Geld"], ["Musik", "Gemüse"], ["Schnee", "Telefon"],
+    ["Zahnarzt", "Banane"], ["Schlüssel", "Kaffee"], ["Berg", "Teller"]
+  ]
+}
