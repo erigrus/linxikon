@@ -1,6 +1,6 @@
 # Rekonstruktionsbericht
 
-> Historischer Bericht zur ersten Version. Die feste Synonym-/Assoziationsbewertung wurde am 16.11.2026 durch fastText ersetzt; aktueller Stand und Validierung: [MODEL-UPDATE.md](MODEL-UPDATE.md).
+> Historischer Bericht zur ersten Version unter dem damaligen Namen Linxikon. Das Projekt heißt seit 17.11.2026 Semantio. Die feste Synonym-/Assoziationsbewertung wurde am 16.11.2026 durch fastText ersetzt; aktueller Stand und Validierung: [MODEL-UPDATE.md](MODEL-UPDATE.md).
 
 Untersuchungsdatum: 16.11.2026. Ziel: https://linxicon.com. Umfang: öffentlich ausgelieferte Seiten und JavaScript-Artefakte. Keine Konten, privaten Daten oder internen APIs untersucht.
 

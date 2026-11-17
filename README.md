@@ -1,4 +1,4 @@
-# Linxikon
+# Semantio
 
 Deutsches Wortverbindungsspiel, inspiriert von [Linxicon](https://linxicon.com). Spielen: **https://erigrus.github.io/linxikon/**. Eigenständige Implementierung; keine Verbindung zu Linxicon oder Kontexto.
 
@@ -17,7 +17,7 @@ Das Netz wächst mit der Wortzahl, lässt sich mobil über den Hintergrund scrol
 
 ## Bedeutungsmodell – dieselbe öffentliche Basis wie Kontexto
 
-[Kontexto nennt `cc.de.300.bin`](https://kontexto.de/blog/wie-funktioniert-fasttext/) von Meta fastText als Grundlage. Linxikon verwendet den dazu veröffentlichten **`cc.de.300.vec.gz`-Export**: 300-dimensionale deutsche Vektoren, trainiert auf Common Crawl und Wikipedia. [Offizielle Modellbeschreibung und Download](https://fasttext.cc/docs/en/crawl-vectors.html).
+[Kontexto nennt `cc.de.300.bin`](https://kontexto.de/blog/wie-funktioniert-fasttext/) von Meta fastText als Grundlage. Semantio verwendet den dazu veröffentlichten **`cc.de.300.vec.gz`-Export**: 300-dimensionale deutsche Vektoren, trainiert auf Common Crawl und Wikipedia. [Offizielle Modellbeschreibung und Download](https://fasttext.cc/docs/en/crawl-vectors.html).
 
 Die alte Bewertung mit festen Synonym- und Themenpunkten (86 % / 64 % / 0 %) wurde vollständig ersetzt:
 
@@ -32,9 +32,11 @@ Werte liegen zwischen −100 % und 100 %. Sie beschreiben Kontextnähe, keine Wa
 
 Die 28 Tagespaare rotieren im festen Katalog; Üben wählt zufällig daraus. Für jedes Paar wird beim Datenbau ein Lösungspfad ausschließlich anhand der tatsächlichen Vektorwerte gesucht und mit den ausgelieferten quantisierten Daten getestet. Hinweise verwenden diese Pfade. Während des Spiels können andere gültige Lösungen gefunden werden.
 
-## Spielstände beim Modellwechsel
+## Spielstände und Umbenennung
 
-Neue Runden und Statistiken verwenden `linxikon:fasttext-de-abtt3-v1:*`. Alte Spielstände unter `linxikon:*` bleiben erhalten und werden nicht mit geänderten Beziehungen neu interpretiert. Einstellungen bleiben bestehen. Die Tagesauswahl nutzt die lokale Gerätezeitzone; Fortschritt synchronisiert sich nicht zwischen Geräten.
+Das Spiel heißt seit 17.11.2026 **Semantio**. Runden und Statistiken verwenden `semantio:fasttext-de-abtt3-v1:*`; Einstellungen liegen unter `semantio:settings`. Beim nächsten Aufruf werden bisherige `linxikon:*`-Einträge automatisch kopiert. Bereits vorhandene neuere Semantio-Spielstände werden dabei nicht überschrieben. Die ursprünglichen Einträge bleiben erhalten; bei gesperrtem oder vollem Speicher können sie weiterhin gelesen werden.
+
+Ältere Spielstände aus der Zeit vor dem fastText-Modell werden weiterhin getrennt behandelt. Die Tagesauswahl nutzt die lokale Gerätezeitzone; Fortschritt synchronisiert sich nicht zwischen Geräten. Die Migration funktioniert für beide GitHub-Pages-Pfade auf demselben Ursprung `erigrus.github.io`.
 
 ## Entwicklung
 
@@ -45,17 +47,17 @@ npm test
 npm run build
 ```
 
-`dist/` enthält die statische Website mit relativen Asset-Pfaden für `/linxikon/`.
+`dist/` enthält die statische Website mit relativen Asset-Pfaden für den aktuellen Repository-Pfad (derzeit `/linxikon/`, nach Umbenennung `/semantio/`).
 
 ### Vektordaten reproduzieren
 
 Nur der Datenbau braucht Python, numpy und wordfreq 3.1.1. Diese Werkzeuge werden nicht an Browser ausgeliefert.
 
 ```sh
-python3 -m venv /tmp/linxikon-build
-/tmp/linxikon-build/bin/pip install numpy wordfreq==3.1.1
+python3 -m venv /tmp/semantio-build
+/tmp/semantio-build/bin/pip install numpy wordfreq==3.1.1
 curl -L https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.de.300.vec.gz -o /tmp/cc.de.300.vec.gz
-OPENBLAS_NUM_THREADS=4 /tmp/linxikon-build/bin/python scripts/build-embeddings.py /tmp/cc.de.300.vec.gz --cache /tmp/selected.npz
+OPENBLAS_NUM_THREADS=4 /tmp/semantio-build/bin/python scripts/build-embeddings.py /tmp/cc.de.300.vec.gz --cache /tmp/selected.npz
 npm test
 npm run build
 ```
@@ -64,7 +66,9 @@ Der Builder verarbeitet nur die ersten 600.000 Zeilen und speichert einen nach d
 
 ## GitHub Pages
 
-[Settings → Pages](https://github.com/erigrus/linxikon/settings/pages) → Source: **GitHub Actions**. `.github/workflows/pages.yml` prüft, baut und veröffentlicht jeden Push auf `main`. Die Workflow-Ausgabe bestätigt die tatsächliche Veröffentlichung.
+[Settings → Pages](https://github.com/erigrus/linxikon/settings/pages) → Source: **GitHub Actions**. `.github/workflows/pages.yml` prüft, baut und veröffentlicht jeden Push auf `main`. Die Workflow-Ausgabe bestätigt die tatsächliche Veröffentlichung. Der Build erzeugt kanonische Seitenadresse und Repository-Links aus `GITHUB_REPOSITORY`. Lokal wird das bisherige Repository `erigrus/linxikon` verwendet.
+
+Der Produktname ist vollständig auf Semantio geändert. Die GitHub-Verbindung darf das Repository nicht umbenennen (HTTP 403). Für die neue Adresse `/semantio/`: unter [Repository-Einstellungen](https://github.com/erigrus/linxikon/settings) den Namen auf `semantio` ändern und anschließend den Pages-Workflow ausführen. Im nächsten GitHub-Actions-Build passen sich die Seitenadresse und Links automatisch an. Alte GitHub-Pages-Adressen werden durch eine Repository-Umbenennung nicht automatisch weitergeleitet.
 
 ## Quellen und Lizenzen
 

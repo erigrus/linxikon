@@ -1,4 +1,4 @@
-# German fastText vectors for Linxikon
+# German fastText vectors for Semantio
 
 Source model: Meta / Facebook AI Research fastText **cc.de.300**, text vector export, trained on Common Crawl and Wikipedia.
 

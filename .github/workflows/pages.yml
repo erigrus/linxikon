@@ -1,4 +1,4 @@
-name: Publish Linxikon to GitHub Pages
+name: Publish Semantio to GitHub Pages
 on:
   push:
     branches: [main]

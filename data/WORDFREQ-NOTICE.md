@@ -3,7 +3,7 @@
 The word filter includes the 50,000 most frequent German entries from wordfreq 3.1.1, restricted to alphabetic words of 3–24 letters and intersected with the selected fastText model rows. No wordfreq frequency values are used to calculate game similarity.
 
 Source: https://github.com/rspeer/wordfreq
-© Robyn Speer and contributors. Frequency data: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/. Package code: Apache 2.0 (WORDFREQ-LICENSE.txt). Selection and intersection are modifications made for Linxikon.
+© Robyn Speer and contributors. Frequency data: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/. Package code: Apache 2.0 (WORDFREQ-LICENSE.txt). Selection and intersection are modifications made for Semantio.
 
 Source attribution carried by wordfreq:
 
