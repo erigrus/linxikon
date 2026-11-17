@@ -9,6 +9,12 @@ Verbinde zwei vorgegebene Wörter durch verwandte Begriffe. Jeder neue Begriff w
 - Hinweise ab 25 Wörtern, Gewinn/Verlust, Ergebnis teilen, dunkler Modus.
 - Fortschritt, Einstellungen und Statistik lokal im Browser; kein Konto, keine API-Schlüssel.
 
+## Lebendiges Wortnetz
+
+Wortkarten hängen an gedämpften Federn und stoßen einander ab. Neue Wörter poppen hinein und geben dem Netz einen Impuls. Beim Ziehen und Loslassen reagieren verbundene Karten; weiche Bézier-Kanten schwingen nach. Kartenabstände, ein Kreuzungsplaner und gebogene Wege um Wörter reduzieren Überlagerungen. In dichten, nicht planaren Netzen sind Kreuzungen weiterhin möglich.
+
+Das Netz wächst mit der Wortzahl, lässt sich mobil über den Hintergrund scrollen und pausiert außerhalb des sichtbaren Bereichs sowie in inaktiven Tabs. „Bewegung reduzieren“ im Betriebssystem schaltet die Animationen ab und ordnet die Wörter direkt an. Darstellung und Physik liegen getrennt in `word-graph.js` und `graph-physics.js`; die Bedeutungsbewertung bleibt unverändert.
+
 ## Bedeutungsmodell – dieselbe öffentliche Basis wie Kontexto
 
 [Kontexto nennt `cc.de.300.bin`](https://kontexto.de/blog/wie-funktioniert-fasttext/) von Meta fastText als Grundlage. Linxikon verwendet den dazu veröffentlichten **`cc.de.300.vec.gz`-Export**: 300-dimensionale deutsche Vektoren, trainiert auf Common Crawl und Wikipedia. [Offizielle Modellbeschreibung und Download](https://fasttext.cc/docs/en/crawl-vectors.html).

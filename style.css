@@ -5,3 +5,30 @@
 @media(max-width:700px){.page{padding:0 16px}header{height:auto;min-height:116px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:19px 0 12px}.brand{min-width:0;font-size:25px;gap:6px;white-space:nowrap}.brand svg{width:30px;flex-shrink:0}.tools{gap:4px}nav{grid-column:1/-1;order:3;width:100%;justify-content:center;padding:3px}.tab{flex:1;min-height:44px;padding:8px 12px}.icon,.tools .icon{width:44px;height:44px}.intro{padding:29px 0 25px}.eyebrow{font-size:8px;letter-spacing:1.2px}h1{font-size:27px;letter-spacing:-1.1px;max-width:330px;margin:13px auto 12px}h1 span{display:block}.intro>p{font-size:12px;max-width:320px;margin:auto}.game{display:flex;flex-direction:column;min-height:0}aside{border-right:0;border-bottom:1px solid var(--line);padding:17px 18px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}.puzzle-label{font-size:8px}aside h2{font-size:14px;margin:3px 0 0;grid-column:1}.endpoints{grid-column:2;grid-row:1/4;min-width:0;font-size:16px;align-self:center;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}.endpoints>div{min-width:0;overflow-wrap:anywhere}.endpoints>div{gap:5px}.endpoints .dot{width:5px;height:5px}.vertical-line{height:1px;border-left:0;border-top:1px dashed var(--line);width:20px;margin:auto 0}.objective,.sidebar-bottom{display:none}.progress-label{grid-column:1/-1;font-size:9px;margin-top:15px}.progress-track{grid-column:1/-1;margin-top:4px;height:3px}.selection{grid-column:1/-1;padding-top:12px;margin-top:8px}.selection h3{margin-bottom:5px;font-size:11px}.selection p{font-size:10px;display:inline;margin-right:5px}.score-list{display:flex;flex-wrap:wrap;gap:5px;max-height:70px}.score-list li{gap:10px;border:0;background:var(--soft);padding:5px 8px;border-radius:4px;font-size:10px}#clue{grid-column:1/-1;padding:5px 0}.board-column{padding:14px 12px 10px}.small-button{min-width:44px;min-height:44px}.board{min-height:310px}#graph{min-height:310px;max-height:350px}.board-caption{font-size:9px;bottom:14px}.board-header>span{font-size:8px}.node text{font-size:18px}#word-form{padding-left:8px;gap:3px}input#word{font-size:16px;min-height:44px;scroll-margin-block:16px}#add{min-height:44px;padding:12px 10px;font-size:13px;white-space:nowrap}#add span{display:none}.input-footer{font-size:9px;line-height:1.5;min-height:32px}#added-count{display:none}.below{font-size:8px;gap:5px;margin-bottom:24px}.below p{gap:4px}.legend-line{width:10px;margin-left:3px}#next-puzzle{max-width:130px;text-align:right}.how-strip{grid-template-columns:1fr;gap:18px;padding:22px 10px}.step{justify-content:flex-start;padding-left:10px}.step p{font-size:11px}.step strong{font-size:12px}footer{flex-direction:column;gap:15px;padding-bottom:22px}footer>div{gap:20px}dialog{padding:22px;max-height:85dvh;overscroll-behavior:contain}.setting-row{gap:12px;flex-wrap:wrap}.setting-row input[type="date"]{min-width:0;max-width:100%;min-height:44px}.primary,.text-button{min-height:44px}.footer-link,footer>div>a{display:inline-flex;align-items:center;min-height:44px}.node rect{stroke-width:2}}
 @media(max-width:360px){header{gap:8px}.brand{font-size:24px}.brand svg{display:none}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Soft, spring-driven word graph. Translations live on the stable outer group;
+   entrance animation and inertial tilt use separate inner groups. */
+#graph{min-height:0;max-height:none;isolation:isolate}
+.graph-edges,.graph-labels{pointer-events:none}
+.node{cursor:grab}
+.node:active{cursor:grabbing}
+.node-hit{fill:transparent;stroke:none;pointer-events:all}
+.node-body{transform-box:fill-box;transform-origin:center}
+.node rect{stroke-width:1.5;filter:drop-shadow(0 3px 7px #25362e0d);transition:fill .2s,stroke .2s,stroke-width .2s}
+.node:hover rect{stroke:var(--green);filter:drop-shadow(0 5px 9px #25362e19)}
+.node.selected rect,.node:focus-visible rect{stroke-width:2.5}
+.node text{font-weight:550;letter-spacing:-.2px;user-select:none;-webkit-user-select:none}
+.edge{fill:none;stroke:#a8bcb0;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:.72;transition:stroke .25s,opacity .25s}
+.edge.focused{stroke:var(--blue);opacity:.9}
+.edge.winning{stroke:var(--green);stroke-width:3;opacity:1}
+.edge-label{font-size:10px;stroke-width:6px;font-weight:550}
+.node-pop{animation:word-pop .68s cubic-bezier(.2,.8,.3,1) both}
+.edge-enter{stroke-dasharray:1;stroke-dashoffset:0;animation:edge-unfurl .6s ease-out backwards}
+@keyframes word-pop{0%{opacity:0;transform:scale(.15) rotate(-7deg)}48%{opacity:1;transform:scale(1.14) rotate(3deg)}72%{transform:scale(.96) rotate(-1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes edge-unfurl{from{stroke-dashoffset:1;opacity:0}to{stroke-dashoffset:0}}
+@media(max-width:700px){.node text{font-size:16px}.edge-label{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.node-pop,.edge-enter{animation:none}.node rect,.edge{transition:none}}
+
+/* Keep the entry controls reachable while larger networks gain scrollable room. */
+.board{max-height:max(420px,min(70svh,760px));overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+@media(max-width:700px){.board{max-height:max(310px,min(60svh,480px))}}
