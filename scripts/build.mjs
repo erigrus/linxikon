@@ -2,7 +2,7 @@ import {cp,mkdir,rm,readFile,writeFile} from 'node:fs/promises';
 
 // GitHub repository administration may be separate from source-write access.
 // Build correct canonical URLs before and after a repository rename.
-const repository=process.env.GITHUB_REPOSITORY||'erigrus/linxikon';
+const repository=process.env.GITHUB_REPOSITORY||'erigrus/semantio';
 if(!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repository))throw new Error('Invalid GITHUB_REPOSITORY');
 const [owner,name]=repository.split('/');
 const rootSite=name.toLowerCase()===`${owner.toLowerCase()}.github.io`;

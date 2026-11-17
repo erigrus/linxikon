@@ -1,6 +1,6 @@
 # Semantio
 
-Deutsches Wortverbindungsspiel, inspiriert von [Linxicon](https://linxicon.com). Spielen: **https://erigrus.github.io/linxikon/**. Eigenständige Implementierung; keine Verbindung zu Linxicon oder Kontexto.
+Deutsches Wortverbindungsspiel, inspiriert von [Linxicon](https://linxicon.com). Spielen: **https://erigrus.github.io/semantio/**. Eigenständige Implementierung; keine Verbindung zu Linxicon oder Kontexto.
 
 Verbinde zwei vorgegebene Wörter durch verwandte Begriffe. Jeder neue Begriff wird mit allen vorhandenen Wörtern verglichen. Gewinne mit einer durchgehenden Verbindung, bevor 50 Wörter auf dem Brett liegen.
 
@@ -47,7 +47,7 @@ npm test
 npm run build
 ```
 
-`dist/` enthält die statische Website mit relativen Asset-Pfaden für den aktuellen Repository-Pfad (derzeit `/linxikon/`, nach Umbenennung `/semantio/`).
+`dist/` enthält die statische Website mit relativen Asset-Pfaden für den Repository-Pfad `/semantio/`.
 
 ### Vektordaten reproduzieren
 
@@ -66,9 +66,9 @@ Der Builder verarbeitet nur die ersten 600.000 Zeilen und speichert einen nach d
 
 ## GitHub Pages
 
-[Settings → Pages](https://github.com/erigrus/linxikon/settings/pages) → Source: **GitHub Actions**. `.github/workflows/pages.yml` prüft, baut und veröffentlicht jeden Push auf `main`. Die Workflow-Ausgabe bestätigt die tatsächliche Veröffentlichung. Der Build erzeugt kanonische Seitenadresse und Repository-Links aus `GITHUB_REPOSITORY`. Lokal wird das bisherige Repository `erigrus/linxikon` verwendet.
+[Settings → Pages](https://github.com/erigrus/semantio/settings/pages) → Source: **GitHub Actions**. `.github/workflows/pages.yml` prüft, baut und veröffentlicht jeden Push auf `main`. Die Workflow-Ausgabe bestätigt die tatsächliche Veröffentlichung. Der Build erzeugt kanonische Seitenadresse und Repository-Links aus `GITHUB_REPOSITORY`. Lokal wird `erigrus/semantio` verwendet.
 
-Der Produktname ist vollständig auf Semantio geändert. Die GitHub-Verbindung darf das Repository nicht umbenennen (HTTP 403). Für die neue Adresse `/semantio/`: unter [Repository-Einstellungen](https://github.com/erigrus/linxikon/settings) den Namen auf `semantio` ändern und anschließend den Pages-Workflow ausführen. Im nächsten GitHub-Actions-Build passen sich die Seitenadresse und Links automatisch an. Alte GitHub-Pages-Adressen werden durch eine Repository-Umbenennung nicht automatisch weitergeleitet.
+Produkt, Repository und Pages-Adresse heißen seit 17.11.2026 Semantio. Die neue Adresse ist **https://erigrus.github.io/semantio/**. Alte GitHub-Pages-Adressen werden durch eine Repository-Umbenennung nicht automatisch weitergeleitet.
 
 ## Quellen und Lizenzen
 
