@@ -2,18 +2,20 @@ export const normalize = word => word.trim().toLocaleLowerCase('de-DE').normaliz
 export const MODEL_VERSION = 'fasttext-de-abtt3-v1';
 export const SCORING_VERSION = 'de-relations-v2';
 export const LINK_THRESHOLD = .4995;
-export const MAX_PUZZLE_POINTS = 100;
+export const MAX_PUZZLE_POINTS = 10_000;
+export const POINTS_PER_WORD = 100;
+export const MAX_SIMILARITY_BONUS = POINTS_PER_WORD - 1;
 
 export function puzzlePoints(intermediateWords, attempts, averageStrength) {
-  const efficiencyPoints = MAX_PUZZLE_POINTS - intermediateWords - attempts;
+  const efficiencyPoints = MAX_PUZZLE_POINTS - (intermediateWords + attempts) * POINTS_PER_WORD;
   // The bonus is smaller than the cost of a single word or attempt.
-  const bonus = Math.round(averageStrength * 99) / 100;
+  const bonus = Math.round(averageStrength * MAX_SIMILARITY_BONUS);
   return Math.min(MAX_PUZZLE_POINTS, efficiencyPoints + bonus);
 }
 
 const percent = new Intl.NumberFormat('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1});
 export const formatScore = score => score === null ? '–' : percent.format(score * 100) + ' %';
-const pointsFormat = new Intl.NumberFormat('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const pointsFormat = new Intl.NumberFormat('de-DE', {maximumFractionDigits: 0});
 export const formatPuzzlePoints = points => pointsFormat.format(points);
 const labels={identity:'Gleiches Wort',form:'Gleiche Grundform',family:'Wortfamilie',synonym:'Synonym',context:'Kontextbezug',weak:'Noch zu wenig Nähe',unknown:'Wort fehlt'};
 function membership(groups){

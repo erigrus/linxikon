@@ -6,7 +6,7 @@ Verbinde zwei vorgegebene Wörter durch verwandte Begriffe. Jeder neue Begriff w
 
 - Tagesrätsel, zufällige Übungsrätsel, Datumswahl für vergangene Rätsel.
 - Ziehbares SVG-Wortnetz, Beziehungen per Klick oder Tastatur, exakte Nähe mit einer Nachkommastelle.
-- Hinweise ab 25 Wörtern, Gewinn/Verlust, Ergebnis teilen, dunkler Modus.
+- Hinweise von Anfang an im Tagesrätsel, Gewinn/Verlust, Ergebnis teilen, dunkler Modus.
 - Fortschritt, Einstellungen und Statistik lokal im Browser; kein Konto, keine API-Schlüssel.
 
 ## Lebendiges Wortnetz

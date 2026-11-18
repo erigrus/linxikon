@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Lexicon,MODEL_VERSION,SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
+import {Lexicon,MODEL_VERSION,SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
 const manifest=JSON.parse(readFileSync(new URL('../data/fasttext/manifest.json',import.meta.url)));
 const vectorBytes=Buffer.concat(manifest.shards.map(s=>readFileSync(new URL('../data/fasttext/'+s.file,import.meta.url))));
 const language=Object.fromEntries(['forms','families','synonyms','calibration'].map(name=>[name,JSON.parse(readFileSync(new URL('../data/relationships/'+name+'.json',import.meta.url)))]));
@@ -78,7 +78,8 @@ test('Pruned visual graph retains bridges between dense semantic clusters',()=>{
 });
 
 test('Connection strength rewards equal efficiency but cannot outweigh a word or attempt', () => {
- assert.equal(puzzlePoints(3, 8, .8), 89.79);
+ assert.equal(puzzlePoints(3, 8, .8), 8_979);
+ assert.equal(formatPuzzlePoints(8_979), '8.979');
  assert.ok(puzzlePoints(3, 8, .8) > puzzlePoints(3, 8, .6));
  for (let attempts = 1; attempts < 48; attempts++) {
   for (let intermediateWords = 0; intermediateWords <= attempts; intermediateWords++) {
@@ -89,7 +90,7 @@ test('Connection strength rewards equal efficiency but cannot outweigh a word or
    }
   }
  }
- assert.equal(puzzlePoints(0, 0, 1), 100);
+ assert.equal(puzzlePoints(0, 0, 1), 10_000);
 });
 
 test('The shortest path uses the stronger chain when multiple paths have the same length', () => {
