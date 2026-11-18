@@ -36,3 +36,5 @@
 .relation-reason{display:block;font-size:9px;font-weight:400;line-height:1.4;color:var(--muted);margin-top:2px}
 .score-list li{align-items:center;gap:10px}
 .score-list li:not(.is-linked) b{color:var(--muted)}
+
+.result .puzzle-points{margin:4px 0;font-size:clamp(20px,4vw,28px);font-weight:700;font-variant-numeric:tabular-nums}

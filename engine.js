@@ -2,6 +2,12 @@ export const normalize = word => word.trim().toLocaleLowerCase('de-DE').normaliz
 export const MODEL_VERSION = 'fasttext-de-abtt3-v1';
 export const SCORING_VERSION = 'de-relations-v2';
 export const LINK_THRESHOLD = .4995;
+export const MAX_PUZZLE_POINTS = 100;
+
+export function puzzlePoints(intermediateWords, attempts) {
+  return MAX_PUZZLE_POINTS - intermediateWords - attempts;
+}
+
 const percent = new Intl.NumberFormat('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1});
 export const formatScore = score => score === null ? '–' : percent.format(score * 100) + ' %';
 const labels={identity:'Gleiches Wort',form:'Gleiche Grundform',family:'Wortfamilie',synonym:'Synonym',context:'Kontextbezug',weak:'Noch zu wenig Nähe',unknown:'Wort fehlt'};
