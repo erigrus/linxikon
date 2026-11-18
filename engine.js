@@ -4,12 +4,17 @@ export const SCORING_VERSION = 'de-relations-v2';
 export const LINK_THRESHOLD = .4995;
 export const MAX_PUZZLE_POINTS = 100;
 
-export function puzzlePoints(intermediateWords, attempts) {
-  return MAX_PUZZLE_POINTS - intermediateWords - attempts;
+export function puzzlePoints(intermediateWords, attempts, averageStrength) {
+  const efficiencyPoints = MAX_PUZZLE_POINTS - intermediateWords - attempts;
+  // The bonus is smaller than the cost of a single word or attempt.
+  const bonus = Math.round(averageStrength * 99) / 100;
+  return Math.min(MAX_PUZZLE_POINTS, efficiencyPoints + bonus);
 }
 
 const percent = new Intl.NumberFormat('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1});
 export const formatScore = score => score === null ? '–' : percent.format(score * 100) + ' %';
+const pointsFormat = new Intl.NumberFormat('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+export const formatPuzzlePoints = points => pointsFormat.format(points);
 const labels={identity:'Gleiches Wort',form:'Gleiche Grundform',family:'Wortfamilie',synonym:'Synonym',context:'Kontextbezug',weak:'Noch zu wenig Nähe',unknown:'Wort fehlt'};
 function membership(groups){
   const map=new Map();
@@ -136,13 +141,42 @@ export function links(words,lexicon) {
   words.forEach((_,i)=>all.filter(e=>e.a===i||e.b===i).sort((a,b)=>b.score-a.score||a.a-b.a||a.b-b.b).slice(0,5).forEach(e=>selected.add(e)));
   return [...selected];
 }
-export function boardPath(words,edges) {
-  const parent=new Map([[0,null]]),q=[0];
-  for(let i=0;i<q.length;i++){
-    const w=q[i]; if(w===1){const path=[];for(let p=1;p!==null;p=parent.get(p))path.unshift(p);return path;}
-    for(const e of edges){const n=e.a===w?e.b:e.b===w?e.a:null;if(n!==null&&!parent.has(n)){parent.set(n,w);q.push(n);}}
+export function boardPath(words, edges) {
+  if (words.length < 2) return [];
+  const neighbors = words.map(() => []);
+  for (const {a, b, score = 0} of edges) {
+    neighbors[a].push({index: b, score});
+    neighbors[b].push({index: a, score});
+  }
+  const paths = new Map([[0, {parent: null, steps: 0, strength: 0}]]);
+  const queue = [0];
+  for (const word of queue) {
+    const {steps, strength} = paths.get(word);
+    if (word === 1) {
+      const path = [];
+      for (let index = 1; index !== null; index = paths.get(index).parent) path.unshift(index);
+      return path;
+    }
+    for (const {index, score} of neighbors[word]) {
+      const known = paths.get(index);
+      const next = {parent: word, steps: steps + 1, strength: strength + score};
+      // All candidates at this distance are processed before the next layer.
+      if (!known) queue.push(index);
+      if (!known || (known.steps === next.steps && known.strength < next.strength)) {
+        paths.set(index, next);
+      }
+    }
   }
   return [];
+}
+
+export function averagePathStrength(path, edges) {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i];
+    total += edges.find(edge => (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a)).score;
+  }
+  return total / (path.length - 1);
 }
 export function dateKey(date=new Date()) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
 export const PAIRS=[['sonne','buch'],['meer','musik'],['wald','geld'],['eis','liebe'],['hund','computer'],['blume','zug'],['feuer','schule'],['mond','käse'],['berg','brief'],['fisch','könig'],['kaffee','fahrrad'],['brot','stern'],['schlüssel','regen'],['musik','garten'],['papier','meer'],['nacht','fußball'],['gold','vogel'],['schnee','kino'],['apfel','uhr'],['schiff','herz'],['lexikon','brücke'],['traum','salz'],['theater','honig'],['schuh','wolke'],['kleidung','wörterbuch'],['telefon','berg'],['gesundheit','schloss'],['bank','mond']];

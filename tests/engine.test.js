@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Lexicon,MODEL_VERSION,SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
+import {Lexicon,MODEL_VERSION,SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
 const manifest=JSON.parse(readFileSync(new URL('../data/fasttext/manifest.json',import.meta.url)));
 const vectorBytes=Buffer.concat(manifest.shards.map(s=>readFileSync(new URL('../data/fasttext/'+s.file,import.meta.url))));
 const language=Object.fromEntries(['forms','families','synonyms','calibration'].map(name=>[name,JSON.parse(readFileSync(new URL('../data/relationships/'+name+'.json',import.meta.url)))]));
@@ -75,4 +75,31 @@ test('Pruned visual graph retains bridges between dense semantic clusters',()=>{
  const group=i=>i===0||(i>=2&&i<=6)?0:1;
  const score=(a,b)=>group(+a)===group(+b)?.9:([+a,+b].sort((x,y)=>x-y).join(':')==='6:7'?.55:0);
  const edges=links(words,{score});assert.ok(edges.some(e=>e.a===6&&e.b===7));assert.ok(boardPath(words,edges).length);
+});
+
+test('Connection strength rewards equal efficiency but cannot outweigh a word or attempt', () => {
+ assert.equal(puzzlePoints(3, 8, .8), 89.79);
+ assert.ok(puzzlePoints(3, 8, .8) > puzzlePoints(3, 8, .6));
+ for (let attempts = 1; attempts < 48; attempts++) {
+  for (let intermediateWords = 0; intermediateWords <= attempts; intermediateWords++) {
+   const better = puzzlePoints(intermediateWords, attempts, LINK_THRESHOLD);
+   assert.ok(better > puzzlePoints(intermediateWords, attempts + 1, 1));
+   if (intermediateWords < attempts) {
+    assert.ok(better > puzzlePoints(intermediateWords + 1, attempts, 1));
+   }
+  }
+ }
+ assert.equal(puzzlePoints(0, 0, 1), 100);
+});
+
+test('The shortest path uses the stronger chain when multiple paths have the same length', () => {
+ const words = ['start', 'ziel', 'schwach', 'stark', 'umweg', 'länger'];
+ const edges = [
+  {a: 0, b: 2, score: .6}, {a: 2, b: 1, score: .6},
+  {a: 0, b: 3, score: .8}, {a: 3, b: 1, score: .9},
+  {a: 0, b: 4, score: .99}, {a: 4, b: 5, score: .99}, {a: 5, b: 1, score: .99},
+ ];
+ const path = boardPath(words, edges);
+ assert.deepEqual(path, [0, 3, 1]);
+ assert.ok(Math.abs(averagePathStrength(path, edges) - .85) < 1e-12);
 });

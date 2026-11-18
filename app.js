@@ -1,4 +1,4 @@
-import {loadLexicon, MODEL_VERSION, LINK_THRESHOLD, MAX_PUZZLE_POINTS, puzzlePoints, formatScore, normalize, links, boardPath, dateKey, dailyPair, PAIRS} from './engine.js?v=7';
+import {loadLexicon, MODEL_VERSION, LINK_THRESHOLD, MAX_PUZZLE_POINTS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, dailyPair, PAIRS} from './engine.js?v=8';
 import {WordGraph} from './word-graph.js?v=4';
 import {STORAGE_PREFIX,migrateStorage,readStorage,writeStorage} from './storage.js?v=5';
 const $=id=>document.getElementById(id);
@@ -52,9 +52,10 @@ function render(){
 function solutionResult() {
  const intermediateWords = winning.length - 2;
  const attempts = state.words.length - 2;
+ const strength = averagePathStrength(winning, edges);
  return {
-  points: puzzlePoints(intermediateWords, attempts),
-  summary: `${intermediateWords} ${intermediateWords === 1 ? 'Zwischenwort' : 'Zwischenwörter'} im kürzesten Weg · ${attempts} ${attempts === 1 ? 'Versuch' : 'Versuche'}`,
+  points: puzzlePoints(intermediateWords, attempts, strength),
+  summary: `${intermediateWords} ${intermediateWords === 1 ? 'Zwischenwort' : 'Zwischenwörter'} im kürzesten Weg · ${attempts} ${attempts === 1 ? 'Versuch' : 'Versuche'} · Ø ${formatScore(strength)} Verbindungsstärke`,
  };
 }
 
@@ -70,7 +71,7 @@ function showResult() {
   heading.textContent = 'Verbunden. Gut gedacht!';
   const score = document.createElement('p');
   score.className = 'puzzle-points';
-  score.textContent = `${points} von ${MAX_PUZZLE_POINTS} Punkten`;
+  score.textContent = `${formatPuzzlePoints(points)} von ${MAX_PUZZLE_POINTS} Punkten`;
   detail.textContent = `${summary}. ${state.hints ? 'Mit Hinweis.' : 'Ohne Hinweis.'}`;
   button.textContent = 'Ergebnis teilen ↗';
   button.onclick = share;
@@ -91,7 +92,7 @@ async function share() {
  const text = [
   `Semantio · ${mode === 'daily' ? activeDate : 'Übung'}`,
   `🔵 ${title(state.words[0])} ↔ ${title(state.words[1])} 🔴`,
-  `${points}/${MAX_PUZZLE_POINTS} Punkte · ${summary}${state.hints ? ' · mit Hinweis' : ''}`,
+  `${formatPuzzlePoints(points)}/${MAX_PUZZLE_POINTS} Punkte · ${summary}${state.hints ? ' · mit Hinweis' : ''}`,
   ...(preferences.sharePath ? [route] : []),
   new URL('./', location.href).href,
  ].join('\n');
@@ -103,14 +104,14 @@ $('word-form').addEventListener('submit',e=>{e.preventDefault();if(!lexicon||sta
  if(!lexicon.has(w)){feedback('Dieses Wort ist noch nicht verfügbar. Versuche ein anderes Wort oder seine Grundform.',true);return;}
  state.words.push(w);$('word').value='';selected=state.words.length-1;render();select(selected);
  const related=state.words.slice(0,-1).map(word=>({word,...lexicon.relation(w,word)})).sort((a,b)=>b.score-a.score),best=related[0];
- feedback(state.won?`Rätsel gelöst. Du hast ${solutionResult().points} von ${MAX_PUZZLE_POINTS} Punkten erreicht.`:best?.score>=LINK_THRESHOLD?`Verbunden mit „${title(best.word)}“ · ${best.label}`:`Noch keine Verbindung. Nächste Nähe: „${title(best.word)}“ (${formatScore(best.score)}).`);
+ feedback(state.won?`Rätsel gelöst. Du hast ${formatPuzzlePoints(solutionResult().points)} von ${MAX_PUZZLE_POINTS} Punkten erreicht.`:best?.score>=LINK_THRESHOLD?`Verbunden mit „${title(best.word)}“ · ${best.label}`:`Noch keine Verbindung. Nächste Nähe: „${title(best.word)}“ (${formatScore(best.score)}).`);
  if(!state.finished)$('word').focus();
 });
 function openModal(html){$('modal-content').innerHTML=html;if(!$('modal').open)$('modal').showModal();}
 $('close-modal').onclick=()=>$('modal').close();$('modal').addEventListener('click',e=>{if(e.target===$('modal')){const r=$('modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('modal').close();}});
 $('daily').onclick=()=>{if(lexicon){activeDate=today;start('daily');}};$('practice').onclick=()=>lexicon&&start('practice');$('new-practice').onclick=()=>start('practice',true);
 $('arrange').onclick=()=>{if(state)wordGraph.shuffle();};
-$('help').onclick=()=>openModal(`<h2>Wörter verbinden. Gedanken folgen.</h2><p>Dein Ziel: Verbinde das blaue und das rote Wort durch eine Kette verwandter Bedeutungen.</p><div class="example-chain"><b>Startwort</b> → verwandtes Wort → … → <b>Zielwort</b></div><ol><li>Gib ein deutsches Wort ein. Es wird mit allen Wörtern auf dem Brett verglichen.</li><li>Ab 50 % Verbindungsstärke entsteht eine Verbindung. Die stärksten Kanten und ein zusammenhängendes Gerüst bleiben sichtbar. So geht ein gültiger Weg auch in einem dichten Netz nicht verloren.</li><li>Sobald ein Weg von Blau nach Rot führt, hast du gewonnen. Du startest mit ${MAX_PUZZLE_POINTS} Punkten. Jedes aufs Brett gesetzte Wort und jedes Zwischenwort im kürzesten Lösungsweg kostet je einen Punkt.</li></ol><p>Du hast Platz für 50 Wörter. Im Tagesrätsel gibt es ab 25 Wörtern einen Hinweis. Im Übungsmodus warten unbegrenzt neue Rätsel.</p><p>Die Verbindungsstärke berücksichtigt Kontextnähe, Wörterbuch-Synonyme und Wortfamilien. Einzahl, Mehrzahl und erkannte Beugungen werden gemeinsam betrachtet; dieselbe Grundform zählt nur einmal. Bei jedem Wort siehst du den Grund für seine Beziehungen. Der Prozentwert ist ein Spielwert, keine Wahrscheinlichkeit. Auch Gegenteile können durch ihren gemeinsamen Kontext verbunden sein.</p><button class="primary" id="understood">Los geht’s ↗</button>`);
+$('help').onclick=()=>openModal(`<h2>Wörter verbinden. Gedanken folgen.</h2><p>Dein Ziel: Verbinde das blaue und das rote Wort durch eine Kette verwandter Bedeutungen.</p><div class="example-chain"><b>Startwort</b> → verwandtes Wort → … → <b>Zielwort</b></div><ol><li>Gib ein deutsches Wort ein. Es wird mit allen Wörtern auf dem Brett verglichen.</li><li>Ab 50 % Verbindungsstärke entsteht eine Verbindung. Die stärksten Kanten und ein zusammenhängendes Gerüst bleiben sichtbar. So geht ein gültiger Weg auch in einem dichten Netz nicht verloren.</li><li>Sobald ein Weg von Blau nach Rot führt, hast du gewonnen. Von ${MAX_PUZZLE_POINTS} Punkten geht je ein Punkt für jedes aufs Brett gesetzte Wort und für jedes Zwischenwort im kürzesten Lösungsweg ab. Die durchschnittliche Verbindungsstärke bringt bis zu 0,99 Bonuspunkte. Jeder gesparte Versuch oder jedes gesparte Zwischenwort zählt also mehr als der gesamte Bonus. Bei gleich kurzen Lösungswegen zählt der mit der höchsten durchschnittlichen Verbindungsstärke.</li></ol><p>Du hast Platz für 50 Wörter. Im Tagesrätsel gibt es ab 25 Wörtern einen Hinweis. Im Übungsmodus warten unbegrenzt neue Rätsel.</p><p>Die Verbindungsstärke berücksichtigt Kontextnähe, Wörterbuch-Synonyme und Wortfamilien. Einzahl, Mehrzahl und erkannte Beugungen werden gemeinsam betrachtet; dieselbe Grundform zählt nur einmal. Bei jedem Wort siehst du den Grund für seine Beziehungen. Der Prozentwert ist ein Spielwert, keine Wahrscheinlichkeit. Auch Gegenteile können durch ihren gemeinsamen Kontext verbunden sein.</p><button class="primary" id="understood">Los geht’s ↗</button>`);
 $('modal').addEventListener('click',e=>{if(e.target.id==='understood'){$('modal').close();write('semantio:seenHelp',true);}});
 $('stats').onclick=()=>{const s=read(gamePrefix+'stats',{games:0,wins:0,best:null,daily:[]});openModal(`<h2>Deine Verbindungen</h2><div class="stat-grid"><div><strong>${Number(s.games)||0}</strong><span>Abgeschlossene Spiele</span></div><div><strong>${s.games?Math.round(s.wins/s.games*100):0}%</strong><span>Gewonnen</span></div><div><strong>${s.best??'–'}</strong><span>Wenigste Zwischenwörter</span></div></div><p>${s.daily.length} Tagesrätsel gelöst. Die Statistik und dein Fortschritt werden nur in diesem Browser gespeichert${saveAvailable?'.':' – der Browserspeicher ist derzeit nicht verfügbar.'}</p>`);};
 $('settings').onclick=()=>{openModal(`<h2>Dein Spiel, dein Stil.</h2><label class="setting-row">Dunkler Modus<input id="dark-setting" type="checkbox" ${preferences.dark?'checked':''}></label><label class="setting-row">Lösungsweg beim Teilen zeigen<input id="share-setting" type="checkbox" ${preferences.sharePath?'checked':''}></label><p>Deine Einstellungen gelten nur für diesen Browser.</p><label class="setting-row">Vergangenes Tagesrätsel<input id="archive-date" type="date" min="2026-01-01" max="${today}" value="${activeDate}"></label><button class="text-button" id="archive-open">Rätsel öffnen ↗</button>`);
