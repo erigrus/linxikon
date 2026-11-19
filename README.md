@@ -24,7 +24,7 @@ Die alte Bewertung mit festen Synonym- und Themenpunkten (86 % / 64 % / 0 %) wur
 1. Die ersten 600.000 Modellzeilen werden mit einer Wortliste aus OpenThesaurus und den 50.000 häufigsten deutschen wordfreq-Einträgen abgeglichen. Häufige gebeugte Formen und Komposita sind dadurch ebenfalls enthalten.
 2. Bei mehreren Schreibweisen gewinnt die zuerst beobachtete, häufigste Originalschreibung. Eingaben werden ohne Beachtung der Groß-/Kleinschreibung verglichen.
 3. **All-but-the-Top:** Mittelwert und drei Hauptkomponenten werden auf den ersten 15.500 akzeptierten Wörtern berechnet und von allen Vektoren entfernt. [Kontexto beschreibt dieselbe Art der Bereinigung](https://kontexto.de/blog/all-but-the-top-vektoren-entzerren/).
-4. 80.751 Vektoren mit je 300 Dimensionen werden pro Zeile zu int8 quantisiert. Der Browser lädt 20 versionierte, SHA-256-geprüfte Datenblöcke (zusammen etwa 24 MB) und berechnet Kosinus-Ähnlichkeiten als ein Signal der Bewertung. Hinzu kommen etwa 2 MB Sprachdaten für Wortformen, Wortfamilien, Synonyme und Kontextkalibrierung. Er benötigt weder das große Gesamtmodell noch einen Server für Eingaben.
+4. 80.751 Vektoren mit je 300 Dimensionen werden pro Zeile zu int8 quantisiert. Der Browser lädt 20 versionierte, SHA-256-geprüfte Datenblöcke (zusammen etwa 24 MB) und berechnet Kosinus-Ähnlichkeiten als ein Signal der Bewertung. Hinzu kommen etwa 2 MB Sprachdaten für Wortformen, Wortfamilien, Synonyme, direkte Begriffsbeziehungen und Kontextkalibrierung. Er benötigt weder das große Gesamtmodell noch einen Server für Eingaben.
 
 **Gleiche öffentliche Modellbasis bedeutet keine identischen Kontexto-Ränge.** Wortauswahl, Referenzmenge, Schreibweisen und Komprimierung sind eigene Entscheidungen. Die proprietären Rätsel-/Rangtabellen von Kontexto werden nicht verwendet. Der Text-Export enthält keine Subword-Matrizen für neue, unbekannte Wörter; fehlende Wörter werden ausdrücklich gemeldet.
 
@@ -33,12 +33,12 @@ Die alte Bewertung mit festen Synonym- und Themenpunkten (86 % / 64 % / 0 %) wur
 Seit 17.11.2026 verwendet Semantio eine kombinierte **Verbindungsstärke von 0–100 %**. Sie ist kein reiner Kosinuswert und keine Wahrscheinlichkeit. Ab **49,95 % (angezeigt als 50,0 %)** entsteht eine Verbindung.
 
 - Erkannte Einzahl, Mehrzahl und Beugungen teilen ihre Grundform und bis zu drei häufige Vektorvertreter. Gleiche Grundformen zählen bei neuen Eingaben nur einmal und verbrauchen keinen zusätzlichen Versuch.
-- Die Kontextnähe wird je Wort relativ zu seiner Nachbarschaft bewertet. Es gilt nicht mehr derselbe rohe Kosinusgrenzwert für alle Wörter.
+- Die Kontextnähe wird je Wort relativ zu seiner Nachbarschaft bewertet. Ein Mindestwert für die Grundformen verhindert, dass eine einzelne Beugung allein eine Verbindung erzeugt.
 - Wörterbuch-Synonyme und lexikalisch belegte Wortfamilien liefern zusätzliche Beziehungen. Das stärkt beispielsweise Arbeit–überarbeitet auch dann, wenn das Vektormodell eher an das Überarbeiten eines Textes denkt.
-- Im Seitenbereich wird der Grund angezeigt: Kontextbezug, Synonym oder Wortfamilie.
+- Direkte Beziehungen wie Oberbegriff, Maßeinheit, Verwendungszweck und Zutat stehen in einer redaktionellen Wortliste. Der Seitenbereich zeigt den Grund jeder Verbindung.
 - Die stärksten Verbindungen und ein maximales Spannwald-Gerüst bleiben sichtbar. Dadurch trennt die visuelle Ausdünnung keine tatsächlich verbundenen Teile des Netzes.
 
-Details, Quellen, Bewertung und Grenzen: [MATCHING.md](MATCHING.md). Es gibt keine wortpaarspezifischen Ausnahmeregeln. Mehrdeutige Wörter bleiben eine Grenze der Ressourcen; die Bewertung verspricht keine vollständige Sprachkenntnis.
+Die [Matching-Dokumentation](MATCHING.md) beschreibt die Bewertung und ihre Grenzen.
 
 Die 28 Tagespaare rotieren im festen Katalog; Üben wählt zufällig daraus. Für jedes Paar wird beim Datenbau ein Lösungspfad ausschließlich anhand der tatsächlichen Vektorwerte gesucht und mit den ausgelieferten quantisierten Daten getestet. Hinweise verwenden verkürzte, geprüfte Pfade ohne doppelte Grundformen. Während des Spiels können andere gültige Lösungen gefunden werden.
 

@@ -1,7 +1,6 @@
 # Natürlichere Verbindungen
 
-17.11.2026, Regeln `de-relations-v2`. Auslöser waren unter anderem Arbeit–überarbeitet,
-Vitamin–Gesundheit und Vitamin–Obst. Die frühere Regel verknüpfte ausschließlich bei
+Aktuelle Regeln vom 19.11.2026 (`de-relations-v3`). Frühere Änderungen adressierten Beziehungen wie Arbeit–überarbeitet, Vitamin–Gesundheit und Vitamin–Obst. Die aktuelle Fassung ergänzt direkte Begriffsbeziehungen und prüft die Grundformen bei Kontexttreffern. Die frühere Regel verknüpfte ausschließlich bei
 ungefähr 30 % bereinigtem Kosinus. Sie behandelte Wortformen getrennt, berücksichtigte
 keine Wortfamilien und konnte beim Ausblenden schwächerer Kanten einen gültigen Weg trennen.
 
@@ -19,17 +18,22 @@ Die neue Spielstärke ist eine Kombination mehrerer Hinweise:
 2. **Lokale Kontextnähe.** Für jeden Modellvektor wird die Nähe zum 120. Nachbarn unter
    12.000 häufigen Wörterbuchkonzepten bestimmt. Diese lokale Schwelle wird auf 0,22–0,30
    begrenzt. Damit erhalten Wörter mit unterschiedlich dichter Nachbarschaft unterschiedliche
-   Bezugspunkte. Der Browser nimmt für einen Vergleich die strengere der beiden Schwellen.
+   Bezugspunkte. Der Browser nimmt die strengere der beiden Schwellen und verwendet mindestens 0,25. Ein Kontexttreffer setzt zusätzlich einen Kosinus von mindestens 0,21 zwischen den Grundformen voraus.
 3. **Wörterbuchwissen.** Eine gemeinsame Wortfamilie aus DErivCELEX liefert Spielstärke 72 %;
    eine OpenThesaurus-Synonymbeziehung 88 %. Gleiche Grundformen entsprechen 100 %. Diese
    Gewichte sind transparente Spielregeln und keine statistischen Wahrscheinlichkeiten.
 
-Der Kontextbeitrag wird stückweise von Kosinus auf Spielstärke abgebildet: unterhalb der
-lokalen Schwelle linear von 0 bis 50 %, darüber linear von 50 bis 100 %. Negative Kosinuswerte
-liefern 0 %. Eine Rundungstoleranz am bisherigen 0,2995-Grenzwert erhält bisher gültige
-Vektorverbindungen. Berechnet wird das stärkste Signal aus direktem Vergleich, den
-Vertretern erkannter Wortformen und den Wörterbuchbeziehungen. Es gibt keine handgepflegten
-Ausnahmeregeln für die Nutzerbeispiele oder andere einzelne Wortpaare.
+4. **Direkte Begriffsbeziehungen.** Redaktionell gepflegte Oberbegriffe (82 %),
+   Maßeinheiten und Verwendungszwecke (je 74 %) sowie Zutaten (76 %) ergänzen das Modell.
+   Die Beziehung gilt für das jeweilige Paar. Begriffe können dadurch auch ohne eigenen
+   Vektor verfügbar sein, etwa „Wanduhr“.
+
+Der Kontextbeitrag wird unterhalb der lokalen Schwelle linear von 0 bis 50 % abgebildet.
+Oberhalb der Schwelle steigt er linear bis 100 %. Negative Kosinuswerte liefern 0 %.
+Berechnet wird das stärkste Signal aus Kontext, Wortformen und belegten Begriffsbeziehungen.
+Die automatische Unterscheidung mehrerer Wortbedeutungen bleibt begrenzt. Beispielsweise
+bleibt „Apple“ im Technikkontext ein Markenname und bekommt keine Übersetzungsverbindung
+zum Obstbegriff „Apfel“.
 
 Verknüpft wird ab 49,95 % Spielstärke (Anzeige 50,0 %). Im Seitenbereich steht der Grund.
 Der Rohkosinus bleibt über die interne Methode `cosine()` messbar und wird nicht als
@@ -44,13 +48,13 @@ Synonymie oder Wahrscheinlichkeit ausgegeben.
 - Hinweise entfernen gleichwertige Wortformen und suchen einen gültigen kürzesten Weg unter
   den verbleibenden Kandidaten. Alle 28 Tagespaare bleiben anfangs getrennt und lösbar.
 - Bestehende Runden, Einstellungen und Statistiken behalten ihren Speicherbereich. Gespeicherte
-  Wörter werden mit den verbesserten Regeln neu verbunden; ein offenes Netz kann dabei bereits
-  einen gültigen Lösungsweg bekommen. Bereits verbuchte Ergebnisse werden nicht doppelt gezählt.
+  Wörter in offenen Runden werden nach den aktuellen Regeln neu verbunden. Abgeschlossene
+  Runden behalten die Regeln und die Wertung ihres Ergebnisses.
 
 ## Prüfung und Grenzen
 
-`tests/fixtures/relationship-quality.json` enthält 28 nachvollziehbare positive Beziehungen
-und 24 negative Kontrollen, darunter ähnlich geschriebene, aber inhaltlich andere Wörter.
+`tests/fixtures/relationship-quality.json` enthält 40 nachvollziehbare positive Beziehungen
+und 30 negative Kontrollen, darunter ähnlich geschriebene, aber inhaltlich andere Wörter.
 Diese Beispiele sind Entwicklungs- und Regressionstests, kein repräsentativer Sprachbenchmark.
 Tests prüfen außerdem Beugungen, Wortfamilien-Erklärungen, Symmetrie, unverwechselte Homographen,
 alle Rätselpfade ohne doppelte Grundformen, den Erhalt von Brückenkanten und den vollständig

@@ -10,7 +10,11 @@
     ["Kaffee", "Tee"], ["Biene", "Honig"], ["Vogel", "Tier"],
     ["Blume", "Pflanze"], ["Schloss", "Schlüssel"],
     ["schreiben", "geschrieben"], ["lesen", "gelesen"],
-    ["heiß", "kalt"], ["Erdbeere", "Himbeere"], ["Meer", "Ozean"]
+    ["heiß", "kalt"], ["Erdbeere", "Himbeere"], ["Meer", "Ozean"],
+    ["Smartwatch", "Uhr"], ["Armbanduhr", "Uhr"], ["Wanduhr", "Uhr"],
+    ["Stunde", "Zeitmessung"], ["Sekunde", "Zeitmessung"], ["Uhr", "Zeitmessung"],
+    ["Meter", "Längenmessung"], ["Lineal", "Längenmessung"], ["Türschloss", "Schloss"],
+    ["Apfel", "Apfelsaft"], ["Roboter", "Computer"], ["Apple", "Smartwatch"]
   ],
   "negative": [
     ["Urlaub", "Laub"], ["Buch", "Buche"], ["Rat", "Ratte"],
@@ -20,6 +24,8 @@
     ["Gefühl", "Schraube"], ["Arzt", "Gitarre"], ["Brot", "Tastatur"],
     ["Fisch", "König"], ["Sonne", "Buch"], ["Apfel", "Uhr"],
     ["Wald", "Geld"], ["Musik", "Gemüse"], ["Schnee", "Telefon"],
-    ["Zahnarzt", "Banane"], ["Schlüssel", "Kaffee"], ["Berg", "Teller"]
+    ["Zahnarzt", "Banane"], ["Schlüssel", "Kaffee"], ["Berg", "Teller"],
+    ["Hund", "Roboter"], ["Apple", "Apfel"], ["Uhr", "Hund"],
+    ["Wanduhr", "Computer"], ["Computer", "Senioren"], ["Computer", "Autist"]
   ]
 }

@@ -1,7 +1,10 @@
 export const normalize = word => word.trim().toLocaleLowerCase('de-DE').normalize('NFC');
 export const MODEL_VERSION = 'fasttext-de-abtt3-v1';
-export const SCORING_VERSION = 'de-relations-v2';
+export const SCORING_VERSION = 'de-relations-v3';
+export const PREVIOUS_SCORING_VERSION = 'de-relations-v2';
 export const LINK_THRESHOLD = .4995;
+const MIN_BASE_COSINE = .21;
+const MIN_CONTEXT_COSINE = .25;
 export const MAX_PUZZLE_POINTS = 10_000;
 export const POINTS_PER_WORD = 100;
 export const MAX_SIMILARITY_BONUS = POINTS_PER_WORD - 1;
@@ -18,6 +21,12 @@ export const formatScore = score => score === null ? '–' : percent.format(scor
 const pointsFormat = new Intl.NumberFormat('de-DE', {maximumFractionDigits: 0});
 export const formatPuzzlePoints = points => pointsFormat.format(points);
 const labels={identity:'Gleiches Wort',form:'Gleiche Grundform',family:'Wortfamilie',synonym:'Synonym',context:'Kontextbezug',weak:'Noch zu wenig Nähe',unknown:'Wort fehlt'};
+const directTypes = {
+  kind: {score: .82, label: 'Oberbegriff'},
+  unit: {score: .74, label: 'Maßeinheit'},
+  purpose: {score: .74, label: 'Verwendungszweck'},
+  ingredient: {score: .76, label: 'Zutat'},
+};
 function membership(groups){
   const map=new Map();
   groups.forEach((group,id)=>group.forEach(word=>{if(!map.has(word))map.set(word,new Set());map.get(word).add(id);}));
@@ -25,7 +34,7 @@ function membership(groups){
 }
 function shared(map,a,b){const x=map.get(a),y=map.get(b);if(!x||!y)return false;for(const id of x)if(y.has(id))return true;return false;}
 function contextStrength(cosine,cutoff){
-  cutoff=Math.min(cutoff,.2995); // Retain the previous model's qualifying links.
+  cutoff=Math.min(cutoff,.2995);
   if(cosine<=0)return 0;
   return cosine<cutoff?.5*cosine/cutoff:.5+.5*(cosine-cutoff)/(1-cutoff);
 }
@@ -46,11 +55,27 @@ export class Lexicon {
       if(base===undefined)this.aliases.set(lemma,prototypes[0]);
     }
     this.families=membership(language.families?.groups||[]);this.synonyms=membership(language.synonyms?.groups||[]);
+    this.direct = new Map();
+    for (const [reason, details] of Object.entries(directTypes)) {
+      for (const [term, related] of language.direct?.[reason] ?? []) {
+        const concept = this.canonical(term);
+        for (const word of related) {
+          const meaning = this.canonical(word);
+          for (const [a, b] of [[concept, meaning], [meaning, concept]]) {
+            if (!this.direct.has(a)) this.direct.set(a, new Map());
+            const neighbors = this.direct.get(a);
+            if ((neighbors.get(b)?.score ?? 0) < details.score) {
+              neighbors.set(b, {...details, reason});
+            }
+          }
+        }
+      }
+    }
     this.cutoffs=language.calibration?.cutoffs||new Array(manifest.count).fill(.30);
     if(this.cutoffs.length!==manifest.count||this.cutoffs.some(x=>!Number.isFinite(x)||x<.219||x>.301))throw new Error('Ungültige Kontextkalibrierung');
   }
   resolve(word){const key=normalize(word);return this.index.get(key)??this.aliases.get(key);}
-  has(word){return this.resolve(word)!==undefined;}
+  has(word){return this.resolve(word)!==undefined||this.direct.has(normalize(word));}
   canonical(word){const id=this.resolve(word);return id===undefined?normalize(word):this.names[id];}
   cosineIds(i,j){
     if(i===j)return 1;
@@ -58,27 +83,48 @@ export class Lexicon {
     return Math.max(-1,Math.min(1,dot/(this.norms[i]*this.norms[j])));
   }
   cosine(a,b){const i=this.resolve(a),j=this.resolve(b);return i===undefined||j===undefined?null:this.cosineIds(i,j);}
-  relation(a,b){
+  relation(a,b,version=SCORING_VERSION){
+    const legacy = version === PREVIOUS_SCORING_VERSION;
     const i=this.resolve(a),j=this.resolve(b);
-    if(i===undefined||j===undefined)return {score:null,cosine:null,reason:'unknown',label:labels.unknown};
+    const nameA=this.canonical(a),nameB=this.canonical(b);
+    const direct=legacy?undefined:this.direct.get(nameA)?.get(nameB);
+    if(i===undefined||j===undefined){
+      if(direct)return {...direct,cosine:null};
+      if(!legacy&&this.has(a)&&this.has(b)){
+        const reason=nameA===nameB?'identity':'weak';
+        return {score:reason==='identity'?1:0,cosine:null,reason,label:labels[reason]};
+      }
+      return {score:null,cosine:null,reason:'unknown',label:labels.unknown};
+    }
     const cosine=this.cosineIds(i,j);
     if(this.names[i]===this.names[j]){const reason=normalize(a)===normalize(b)?'identity':'form';return {score:1,cosine,reason,label:labels[reason]};}
-    const key=i<j?i+':'+j:j+':'+i;
+    const key=(legacy?'legacy:':'')+(i<j?i+':'+j:j+':'+i);
     if(this.cache.has(key))return this.cache.get(key);
     let score=0,contextCosine=cosine;
     const left=[...new Set([i,...(this.prototypes[this.formById[i]]||[])])],right=[...new Set([j,...(this.prototypes[this.formById[j]]||[])])];
     for(const x of left)for(const y of right){
-      const value=this.cosineIds(x,y),strength=contextStrength(value,Math.max(this.cutoffs[x],this.cutoffs[y]));
+      const cutoff=Math.max(this.cutoffs[x],this.cutoffs[y],legacy?0:MIN_CONTEXT_COSINE);
+      const value=this.cosineIds(x,y),strength=contextStrength(value,cutoff);
       if(strength>score){score=strength;contextCosine=value;}
+    }
+    if (!legacy) {
+      // A single fortunate inflection must not create a contextual link
+      // when the vocabulary's base forms provide too little evidence.
+      const base = this.cosineIds(this.resolve(nameA) ?? i, this.resolve(nameB) ?? j);
+      if (base < MIN_BASE_COSINE) {
+        score = Math.min(score, Math.max(0, base) / MIN_BASE_COSINE * LINK_THRESHOLD);
+      }
     }
     let reason=score>=LINK_THRESHOLD?'context':'weak';
     if(shared(this.families,this.names[i],this.names[j])&&score<.72){score=.72;reason='family';}
     if(shared(this.synonyms,this.names[i],this.names[j])&&score<.88){score=.88;reason='synonym';}
-    const result={score,cosine,contextCosine,reason,label:labels[reason]};
+    let label=labels[reason];
+    if(direct&&score<direct.score){score=direct.score;reason=direct.reason;label=direct.label;}
+    const result={score,cosine,contextCosine,reason,label};
     if(this.cache.size>=8192)this.cache.clear();this.cache.set(key,result);return result;
   }
-  score(a,b){return this.relation(a,b).score;}
-  route(start,end){
+  score(a,b,version){return this.relation(a,b,version).score;}
+  route(start,end,version){
     start=normalize(start);end=normalize(end);
     const direct=this.routes[start+'|'+end],backward=this.routes[end+'|'+start];
     const stored=direct||backward,reversed=!direct&&!!backward;
@@ -90,11 +136,11 @@ export class Lexicon {
       const target=candidates.length-1,queue=[0],parents=new Map([[0,null]]);
       for(let p=0;p<queue.length;p++){
         const i=queue[p];if(i===target){const path=[];for(let j=target;j!==null;j=parents.get(j))path.unshift(candidates[j]);return reversed?path.reverse():path;}
-        for(let j=0;j<candidates.length;j++)if(!parents.has(j)&&this.score(candidates[i],candidates[j])>=LINK_THRESHOLD){parents.set(j,i);queue.push(j);}
+        for(let j=0;j<candidates.length;j++)if(!parents.has(j)&&this.score(candidates[i],candidates[j],version)>=LINK_THRESHOLD){parents.set(j,i);queue.push(j);}
       }
       return [];
     }
-    const score=this.score(start,end);return score!==null&&score>=LINK_THRESHOLD?[start,end]:[];
+    const score=this.score(start,end,version);return score!==null&&score>=LINK_THRESHOLD?[start,end]:[];
   }
 }
 async function verified(bytes,hash){
@@ -106,12 +152,12 @@ async function verified(bytes,hash){
 // The public vector model and the separately licensed linguistic resources
 // must all load successfully. There is no silent fallback to old scoring.
 export async function loadLexicon(onProgress=()=>{},fetcher=fetch){
-  const responses=await Promise.all([fetcher('./data/fasttext/manifest.json',{cache:'no-cache'}),fetcher('./data/relationships/manifest.json?rules='+SCORING_VERSION,{cache:'no-cache'})]);
+  const responses=await Promise.all([fetcher('./data/fasttext/manifest.json',{cache:'no-cache'}),fetcher('./data/relationships/manifest-v3.json',{cache:'no-cache'})]);
   if(responses.some(r=>!r.ok))throw new Error('Wortmodell nicht erreichbar');
   const [manifest,rules]=await Promise.all(responses.map(r=>r.json()));
   if(manifest.version!==MODEL_VERSION||manifest.dimensions!==300||!Number.isSafeInteger(manifest.count)||manifest.count<1||manifest.count>200000||!Array.isArray(manifest.shards)||manifest.shards.length>100||manifest.shards.some(s=>!/^vectors-\d{2}\.i8$/.test(s.file)||!Number.isSafeInteger(s.rows)||s.rows<1)||manifest.shards.reduce((n,s)=>n+s.rows,0)!==manifest.count)throw new Error('Unbekannte Modellversion');
-  const names=['forms.json','families.json','synonyms.json','calibration.json'];
-  if(rules.version!==SCORING_VERSION||rules.modelVersion!==MODEL_VERSION||rules.count!==manifest.count||!Array.isArray(rules.files)||rules.files.length!==4||new Set(rules.files.map(f=>f.file)).size!==4||rules.files.some(f=>!names.includes(f.file)||!Number.isSafeInteger(f.bytes)||f.bytes<1||f.bytes>10000000))throw new Error('Ungültige Sprachdaten');
+  const names=['forms.json','families.json','synonyms.json','calibration.json','direct.json'];
+  if(rules.version!==SCORING_VERSION||rules.modelVersion!==MODEL_VERSION||rules.count!==manifest.count||!Array.isArray(rules.files)||rules.files.length!==names.length||new Set(rules.files.map(f=>f.file)).size!==names.length||rules.files.some(f=>!names.includes(f.file)||!Number.isSafeInteger(f.bytes)||f.bytes<1||f.bytes>10000000))throw new Error('Ungültige Sprachdaten');
   await verified(new TextEncoder().encode(JSON.stringify(manifest.words)),rules.vocabularySha256);
   const vectors=new Int8Array(manifest.count*300),language={};let loaded=0,next=0,cursor=0;
   const total=vectors.byteLength+rules.files.reduce((sum,f)=>sum+f.bytes,0);
@@ -129,10 +175,10 @@ export async function loadLexicon(onProgress=()=>{},fetcher=fetch){
   async function worker(){while(next<tasks.length){const task=tasks[next++];await task();}}
   await Promise.all(Array.from({length:4},worker));return new Lexicon(manifest,vectors,language);
 }
-export function links(words,lexicon) {
+export function links(words,lexicon,version) {
   const all=[];
   for(let i=0;i<words.length;i++) for(let j=i+1;j<words.length;j++) {
-    const score=lexicon.score(words[i],words[j]); if(score>=LINK_THRESHOLD)all.push({a:i,b:j,score});
+    const score=lexicon.score(words[i],words[j],version); if(score>=LINK_THRESHOLD)all.push({a:i,b:j,score});
   }
   // Preserve reachability when hiding weaker edges in crowded neighbourhoods.
   const selected=new Set(),parent=words.map((_,i)=>i);

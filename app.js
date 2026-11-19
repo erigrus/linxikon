@@ -1,4 +1,4 @@
-import {loadLexicon, MODEL_VERSION, LINK_THRESHOLD, MAX_PUZZLE_POINTS, POINTS_PER_WORD, MAX_SIMILARITY_BONUS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, dailyPair, PAIRS} from './engine.js?v=9';
+import {loadLexicon, MODEL_VERSION, SCORING_VERSION, PREVIOUS_SCORING_VERSION, LINK_THRESHOLD, MAX_PUZZLE_POINTS, POINTS_PER_WORD, MAX_SIMILARITY_BONUS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, dailyPair, PAIRS} from './engine.js?v=10';
 import {WordGraph} from './word-graph.js?v=4';
 import {STORAGE_PREFIX,migrateStorage,readStorage,writeStorage} from './storage.js?v=5';
 const $=id=>document.getElementById(id);
@@ -14,15 +14,18 @@ function feedback(text,error=false){$('feedback').textContent=text;$('feedback')
 function title(word){return word.charAt(0).toLocaleUpperCase('de-DE')+word.slice(1);}
 const gamePrefix=STORAGE_PREFIX+MODEL_VERSION+':';
 function save(){write(gamePrefix+ (mode==='daily'?activeDate:'practice'),state);}
-function fresh(pair){return {words:[...pair],finished:false,won:false,hints:0,recorded:false};}
+function fresh(pair){return {words:[...pair],rulesVersion:SCORING_VERSION,finished:false,won:false,hints:0,recorded:false};}
 function validState(value,pair){return value&&Array.isArray(value.words)&&value.words.length>=2&&value.words.length<=50&&value.words.every(w=>typeof w==='string'&&lexicon.has(w))&&new Set(value.words).size===value.words.length&&(!pair||(value.words[0]===pair[0]&&value.words[1]===pair[1]));}
 function start(nextMode,newGame=false){
  mode=nextMode;selected=null;
  const pair=mode==='daily'?dailyPair(activeDate):PAIRS[Math.floor(Math.random()*PAIRS.length)];
  const previous=read(gamePrefix+(mode==='daily'?activeDate:'practice'),null);
  state=!newGame&&validState(previous,mode==='daily'?pair:null)?previous:fresh(pair);
- wordGraph.reset();edges=links(state.words,lexicon);winning=boardPath(state.words,edges);
- state.won=winning.length>0;state.finished=state.won||state.words.length>=50;
+ // Completed rounds keep the matching rules that were used for their result.
+ state.rulesVersion = state.finished && state.recorded
+  ? (state.rulesVersion ?? PREVIOUS_SCORING_VERSION)
+  : SCORING_VERSION;
+ wordGraph.reset();
  $('daily').classList.toggle('active',mode==='daily');$('practice').classList.toggle('active',mode==='practice');
  $('puzzle-label').textContent=mode==='daily'?'TAGESRÄTSEL':'ÜBUNGSMODUS';
  $('puzzle-date').textContent=mode==='daily'?new Intl.DateTimeFormat('de-DE',{day:'numeric',month:'long',year:'numeric'}).format(new Date(activeDate+'T12:00:00')):'Platz für neue Gedanken';
@@ -32,7 +35,7 @@ function start(nextMode,newGame=false){
 }
 const wordGraph=new WordGraph($('graph'),{onSelect:select,formatScore});
 function select(index){selected=index;wordGraph.select(index);$('selection-title').textContent=title(state.words[index]);
- const related=state.words.map((w,i)=>({word:w,id:i,...lexicon.relation(w,state.words[index])})).filter(x=>x.id!==index).sort((a,b)=>b.score-a.score);
+ const related=state.words.map((w,i)=>({word:w,id:i,...lexicon.relation(w,state.words[index],state.rulesVersion)})).filter(x=>x.id!==index).sort((a,b)=>b.score-a.score);
  const ul=document.createElement('ul');ul.className='score-list';
  for(const item of related){const li=document.createElement('li'),label=document.createElement('span'),score=document.createElement('b');label.textContent=title(item.word);const reason=document.createElement('small');reason.className='relation-reason';reason.textContent=item.label;label.append(reason);score.textContent=formatScore(item.score);li.classList.toggle('is-linked',item.score>=LINK_THRESHOLD);li.append(label,score);ul.append(li);}
  $('selection-body').replaceChildren(ul);
@@ -42,7 +45,7 @@ function record(){
  const stats=read(gamePrefix+'stats',{games:0,wins:0,best:null,daily:[]});stats.games++;if(state.won){stats.wins++;const n=winning.length-2;stats.best=stats.best===null?n:Math.min(stats.best,n);if(mode==='daily'&&!stats.daily.includes(activeDate))stats.daily.push(activeDate);}write(gamePrefix+'stats',stats);state.recorded=true;
 }
 function render(){
- edges=links(state.words,lexicon);winning=boardPath(state.words,edges);state.won=winning.length>0;state.finished=state.won||state.words.length>=50;
+ edges=links(state.words,lexicon,state.rulesVersion);winning=boardPath(state.words,edges);state.won=winning.length>0;state.finished=state.won||state.words.length>=50;
  wordGraph.update({words:state.words,edges,winning,selected});$('word-count').textContent=state.words.length+' / 50';$('progress').style.width=(state.words.length*2)+'%';$('added-count').textContent=(state.words.length-2)+' Wörter ergänzt';
  $('word').disabled=state.finished;$('add').disabled=state.finished;$('clue').hidden=mode!=='daily'||state.finished;
  $('board-caption').hidden=state.words.length>2;$('board-status').lastChild.textContent=state.won?' VERBINDUNG GEFUNDEN':' DEIN WORTNETZ';
@@ -80,7 +83,7 @@ function showResult() {
   heading.textContent = '50 Wörter – ein Netz voller Ideen.';
   detail.textContent = 'Die beiden Seiten sind noch getrennt. Entdecke eine mögliche Kette oder versuche ein Übungsrätsel.';
   button.textContent = 'Mögliche Verbindung ansehen';
-  button.onclick = () => feedback(lexicon.route(state.words[0], state.words[1]).map(title).join(' → '));
+  button.onclick = () => feedback(lexicon.route(state.words[0], state.words[1], state.rulesVersion).map(title).join(' → '));
   result.replaceChildren(heading, detail, button);
  }
  result.hidden = false;
@@ -111,7 +114,7 @@ function openModal(html){$('modal-content').innerHTML=html;if(!$('modal').open)$
 $('close-modal').onclick=()=>$('modal').close();$('modal').addEventListener('click',e=>{if(e.target===$('modal')){const r=$('modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('modal').close();}});
 $('daily').onclick=()=>{if(lexicon){activeDate=today;start('daily');}};$('practice').onclick=()=>lexicon&&start('practice');$('new-practice').onclick=()=>start('practice',true);
 $('arrange').onclick=()=>{if(state)wordGraph.shuffle();};
-$('help').onclick=()=>openModal(`<h2>Wörter verbinden. Gedanken folgen.</h2><p>Dein Ziel: Verbinde das blaue und das rote Wort durch eine Kette verwandter Bedeutungen.</p><div class="example-chain"><b>Startwort</b> → verwandtes Wort → … → <b>Zielwort</b></div><ol><li>Gib ein deutsches Wort ein. Es wird mit allen Wörtern auf dem Brett verglichen.</li><li>Ab 50 % Verbindungsstärke entsteht eine Verbindung. Die stärksten Kanten und ein zusammenhängendes Gerüst bleiben sichtbar. So geht ein gültiger Weg auch in einem dichten Netz nicht verloren.</li><li>Sobald ein Weg von Blau nach Rot führt, hast du gewonnen. Von ${formatPuzzlePoints(MAX_PUZZLE_POINTS)} Punkten gehen je ${POINTS_PER_WORD} Punkte für jedes aufs Brett gesetzte Wort und für jedes Zwischenwort im kürzesten Lösungsweg ab. Die durchschnittliche Verbindungsstärke bringt bis zu ${MAX_SIMILARITY_BONUS} Bonuspunkte. Jeder gesparte Versuch oder jedes gesparte Zwischenwort zählt also mehr als der gesamte Bonus. Bei gleich kurzen Lösungswegen zählt der mit der höchsten durchschnittlichen Verbindungsstärke.</li></ol><p>Du hast Platz für 50 Wörter. Im Tagesrätsel kannst du von Anfang an einen Hinweis holen. Im Übungsmodus warten unbegrenzt neue Rätsel.</p><p>Die Verbindungsstärke berücksichtigt Kontextnähe, Wörterbuch-Synonyme und Wortfamilien. Einzahl, Mehrzahl und erkannte Beugungen werden gemeinsam betrachtet; dieselbe Grundform zählt nur einmal. Bei jedem Wort siehst du den Grund für seine Beziehungen. Der Prozentwert ist ein Spielwert, keine Wahrscheinlichkeit. Auch Gegenteile können durch ihren gemeinsamen Kontext verbunden sein.</p><button class="primary" id="understood">Los geht’s ↗</button>`);
+$('help').onclick=()=>openModal(`<h2>Wörter verbinden. Gedanken folgen.</h2><p>Dein Ziel: Verbinde das blaue und das rote Wort durch eine Kette verwandter Bedeutungen.</p><div class="example-chain"><b>Startwort</b> → verwandtes Wort → … → <b>Zielwort</b></div><ol><li>Gib ein deutsches Wort ein. Es wird mit allen Wörtern auf dem Brett verglichen.</li><li>Ab 50 % Verbindungsstärke entsteht eine Verbindung. Die stärksten Kanten und ein zusammenhängendes Gerüst bleiben sichtbar. So geht ein gültiger Weg auch in einem dichten Netz nicht verloren.</li><li>Sobald ein Weg von Blau nach Rot führt, hast du gewonnen. Von ${formatPuzzlePoints(MAX_PUZZLE_POINTS)} Punkten gehen je ${POINTS_PER_WORD} Punkte für jedes aufs Brett gesetzte Wort und für jedes Zwischenwort im kürzesten Lösungsweg ab. Die durchschnittliche Verbindungsstärke bringt bis zu ${MAX_SIMILARITY_BONUS} Bonuspunkte. Jeder gesparte Versuch oder jedes gesparte Zwischenwort zählt also mehr als der gesamte Bonus. Bei gleich kurzen Lösungswegen zählt der mit der höchsten durchschnittlichen Verbindungsstärke.</li></ol><p>Du hast Platz für 50 Wörter. Im Tagesrätsel kannst du von Anfang an einen Hinweis holen. Im Übungsmodus warten unbegrenzt neue Rätsel.</p><p>Die Verbindungsstärke berücksichtigt Kontextnähe, Synonyme und Wortfamilien. Auch direkte Begriffsbeziehungen zählen, etwa „Armbanduhr ist eine Uhr“. Einzahl, Mehrzahl und erkannte Beugungen werden gemeinsam betrachtet; dieselbe Grundform zählt nur einmal. Bei jedem Wort siehst du den Grund für seine Beziehungen. Der Prozentwert ist ein Spielwert, keine Wahrscheinlichkeit. Auch Gegenteile können durch ihren gemeinsamen Kontext verbunden sein.</p><button class="primary" id="understood">Los geht’s ↗</button>`);
 $('modal').addEventListener('click',e=>{if(e.target.id==='understood'){$('modal').close();write('semantio:seenHelp',true);}});
 $('stats').onclick=()=>{const s=read(gamePrefix+'stats',{games:0,wins:0,best:null,daily:[]});openModal(`<h2>Deine Verbindungen</h2><div class="stat-grid"><div><strong>${Number(s.games)||0}</strong><span>Abgeschlossene Spiele</span></div><div><strong>${s.games?Math.round(s.wins/s.games*100):0}%</strong><span>Gewonnen</span></div><div><strong>${s.best??'–'}</strong><span>Wenigste Zwischenwörter</span></div></div><p>${s.daily.length} Tagesrätsel gelöst. Die Statistik und dein Fortschritt werden nur in diesem Browser gespeichert${saveAvailable?'.':' – der Browserspeicher ist derzeit nicht verfügbar.'}</p>`);};
 $('settings').onclick=()=>{openModal(`<h2>Dein Spiel, dein Stil.</h2><label class="setting-row">Dunkler Modus<input id="dark-setting" type="checkbox" ${preferences.dark?'checked':''}></label><label class="setting-row">Lösungsweg beim Teilen zeigen<input id="share-setting" type="checkbox" ${preferences.sharePath?'checked':''}></label><p>Deine Einstellungen gelten nur für diesen Browser.</p><label class="setting-row">Vergangenes Tagesrätsel<input id="archive-date" type="date" min="2026-01-01" max="${today}" value="${activeDate}"></label><button class="text-button" id="archive-open">Rätsel öffnen ↗</button>`);

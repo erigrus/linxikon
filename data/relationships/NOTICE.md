@@ -50,3 +50,10 @@ at the 120th neighbour among 12,000 frequent dictionary concepts, clipped to
 Build process: scripts/build-relationships.py. Resource hashes and vocabulary
 identity are recorded in manifest.json. These database licenses are separate from
 the source-code license.
+
+
+## direct.json — direct lexical relations
+
+This Semantio-authored list records examples of categories, units, uses and ingredients.
+The active build includes its hash in manifest-v3.json. The list is covered by the
+repository license at ../../LICENSE.

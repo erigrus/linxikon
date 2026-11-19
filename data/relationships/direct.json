@@ -1,0 +1,39 @@
+{
+  "kind": [
+    ["uhr", ["armbanduhr", "smartwatch", "taschenuhr", "wanduhr", "standuhr", "stoppuhr", "bahnhofsuhr", "taucheruhr", "quarzuhr", "sanduhr", "sonnenuhr", "funkuhr"]],
+    ["computer", ["laptop", "notebook", "desktopcomputer", "tabletcomputer", "supercomputer"]],
+    ["roboter", ["industrieroboter", "staubsaugerroboter", "roboterhund"]],
+    ["hund", ["dackel", "pudel", "schäferhund", "labrador", "terrier"]],
+    ["vogel", ["stadttaube", "amsel", "spatz", "pinguin", "adler", "eule"]],
+    ["obst", ["apfel", "birne", "banane", "kirsche", "pflaume", "orange"]],
+    ["vitamin", ["thiamin", "riboflavin", "niacin", "folsäure", "ascorbinsäure"]],
+    ["fahrzeug", ["auto", "fahrrad", "motorrad", "lastwagen", "bus", "straßenbahn"]],
+    ["musikinstrument", ["klavier", "gitarre", "geige", "trompete", "flöte"]],
+    ["werkzeug", ["hammer", "zange", "schraubenzieher", "schraubendreher", "meißel"]],
+    ["möbel", ["esstisch", "schreibtisch", "bett", "kleiderschrank", "sofa"]],
+    ["tisch", ["esstisch", "schreibtisch", "nachttisch", "küchentisch"]],
+    ["schloss", ["türschloss", "vorhängeschloss", "fahrradschloss"]],
+    ["saft", ["apfelsaft", "orangensaft", "traubensaft", "birnensaft"]],
+    ["baum", ["apfelbaum", "birnbaum", "kirschbaum", "eiche", "buche"]],
+    ["gebäck", ["keks", "plätzchen", "croissant"]]
+  ],
+  "unit": [
+    ["zeitmessung", ["millisekunde", "sekunde", "minute", "stunde"]],
+    ["längenmessung", ["millimeter", "zentimeter", "meter", "kilometer"]],
+    ["masse", ["milligramm", "gramm", "kilogramm", "tonne"]],
+    ["volumen", ["milliliter", "deziliter", "liter", "kubikmeter"]],
+    ["temperatur", ["celsius", "kelvin", "fahrenheit"]]
+  ],
+  "purpose": [
+    ["zeitmessung", ["uhr", "zeitmesser", "stoppuhr"]],
+    ["temperatur", ["thermometer"]],
+    ["längenmessung", ["maßband", "zollstock", "lineal"]],
+    ["musizieren", ["musikinstrument"]]
+  ],
+  "ingredient": [
+    ["apfel", ["apfelsaft", "apfelmus", "apfelkuchen"]],
+    ["orange", ["orangensaft"]],
+    ["traube", ["traubensaft"]],
+    ["birne", ["birnensaft"]]
+  ]
+}

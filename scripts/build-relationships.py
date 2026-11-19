@@ -91,5 +91,11 @@ for name,data in files.items():
  entries.append({'file':name,'bytes':len(blob),'sha256':hashlib.sha256(blob).hexdigest()})
 manifest={'version':'de-relations-v2','modelVersion':model['version'],'count':len(words),'vocabularySha256':hashlib.sha256(json.dumps(words,ensure_ascii=False,separators=(',',':')).encode()).hexdigest(),'files':entries,'provenance':{'lemmasSha256':hashlib.sha256(pathlib.Path(args.lemmas).read_bytes()).hexdigest(),'familiesSha256':hashlib.sha256(pathlib.Path(args.families).read_bytes()).hexdigest(),'sourceFormsSha256':hashlib.sha256(pathlib.Path(args.source_forms).read_bytes()).hexdigest()}}
 (out/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,separators=(',',':')))
+direct = (out/'direct.json').read_bytes()
+current = {**manifest, 'version': 'de-relations-v3', 'files': [*entries, {
+ 'file': 'direct.json', 'bytes': len(direct), 'sha256': hashlib.sha256(direct).hexdigest(),
+}]}
+(out/'manifest-v3.json').write_text(json.dumps(current,ensure_ascii=False,separators=(',',':')))
+
 print('Built:',len(formgroups),'form groups;',len(familygroups),'families;',len(syngroups),'synonym groups;',len(cutoffs),'local cutoffs.',flush=True)
 for w in ['vitamin','vitamine','überarbeitet','überarbeiten','arbeit','buche','buch']:print(w,'->',canonical.get(w),flush=True)

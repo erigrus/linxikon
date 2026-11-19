@@ -1,10 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Lexicon,MODEL_VERSION,SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
+import {Lexicon,MODEL_VERSION,PREVIOUS_SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
 const manifest=JSON.parse(readFileSync(new URL('../data/fasttext/manifest.json',import.meta.url)));
 const vectorBytes=Buffer.concat(manifest.shards.map(s=>readFileSync(new URL('../data/fasttext/'+s.file,import.meta.url))));
-const language=Object.fromEntries(['forms','families','synonyms','calibration'].map(name=>[name,JSON.parse(readFileSync(new URL('../data/relationships/'+name+'.json',import.meta.url)))]));
+const language=Object.fromEntries(['forms','families','synonyms','calibration','direct'].map(name=>[name,JSON.parse(readFileSync(new URL('../data/relationships/'+name+'.json',import.meta.url)))]));
 const lexicon=new Lexicon(manifest,new Int8Array(vectorBytes.buffer,vectorBytes.byteOffset,vectorBytes.byteLength),language);
 test('German normalization and vector coverage',()=>{assert.equal(normalize('  BÄUME  '),'bäume');for(const word of ['Wasser','Bäume','Straße','Sonnenlicht','Erdbeere','Himbeere'])assert.ok(lexicon.has(word),word);assert.ok(!lexicon.has('xyzabcxyz'));assert.equal(lexicon.score('xyzabcxyz','wasser'),null);});
 test('Cosine uses vector direction, supports negative values, and is symmetric',()=>{
@@ -37,6 +37,7 @@ test('Actual shard loader verifies all data and reports completed progress',asyn
   const path=new URL('../'+url.split('?')[0],import.meta.url),data=readFileSync(path);
   return {ok:true,json:async()=>JSON.parse(data),arrayBuffer:async()=>Uint8Array.from(data).buffer};
  });assert.equal(progress,1);assert.equal(model.score('hund','katze'),lexicon.score('hund','katze'));
+ assert.equal(model.relation('smartwatch','uhr').reason,'kind');
 });
 test('Missing and corrupt shards fail rather than falling back to old scores',async()=>{
  const fetchData=async url=>{
@@ -103,4 +104,38 @@ test('The shortest path uses the stronger chain when multiple paths have the sam
  const path = boardPath(words, edges);
  assert.deepEqual(path, [0, 3, 1]);
  assert.ok(Math.abs(averagePathStrength(path, edges) - .85) < 1e-12);
+});
+
+test('Direct lexical links cover specific nouns and report their reason symmetrically', () => {
+ for (const [a, b, reason] of [
+  ['Smartwatch', 'Uhr', 'kind'],
+  ['Armbanduhr', 'Uhr', 'kind'],
+  ['Wanduhr', 'Uhr', 'kind'],
+  ['Stunde', 'Zeitmessung', 'unit'],
+  ['Uhr', 'Zeitmessung', 'purpose'],
+  ['Apfel', 'Apfelsaft', 'ingredient'],
+ ]) {
+  assert.equal(lexicon.relation(a, b).reason, reason, a + '/' + b);
+  assert.equal(lexicon.relation(b, a).reason, reason, b + '/' + a);
+  assert.ok(lexicon.score(a, b) >= LINK_THRESHOLD);
+ }
+ assert.equal(lexicon.cosine('Wanduhr', 'Uhr'), null);
+ assert.equal(lexicon.score('Wanduhr', 'Computer'), 0);
+});
+
+test('A single inflected form does not unlock a shortcut, while completed boards can use their original rules', () => {
+ const board = ['hund', 'computer', 'roboter'];
+ assert.deepEqual(boardPath(board, links(board, lexicon)), []);
+ assert.deepEqual(boardPath(board, links(board, lexicon, PREVIOUS_SCORING_VERSION)), [0, 2, 1]);
+ const hint = lexicon.route('hund', 'computer');
+ assert.ok(hint.length >= 4);
+ assert.ok(!hint.slice(1, -1).every(word => word === 'roboter'));
+});
+
+test('The fruit stays separate from the brand while devices connect to their category', () => {
+ const board = ['apfel', 'uhr', 'apple', 'smartwatch', 'armbanduhr', 'zeitmessung', 'stunde'];
+ const edges = links(board, lexicon);
+ assert.ok(edges.some(edge => edge.a === 1 && edge.b === 3));
+ assert.ok(edges.some(edge => edge.a === 5 && edge.b === 6));
+ assert.deepEqual(boardPath(board, edges), []);
 });
