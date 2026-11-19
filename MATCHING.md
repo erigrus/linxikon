@@ -46,7 +46,7 @@ Synonymie oder Wahrscheinlichkeit ausgegeben.
 - Für die Darstellung werden zusätzlich zu den stärksten Kanten die Kanten eines maximalen
   Spannwaldes behalten. Das bewahrt die Erreichbarkeit aller semantisch verbundenen Komponenten.
 - Hinweise entfernen gleichwertige Wortformen und suchen einen gültigen kürzesten Weg unter
-  den verbleibenden Kandidaten. Alle 28 Tagespaare bleiben anfangs getrennt und lösbar.
+  den verbleibenden Kandidaten. Alle Startpaare im Archiv und im automatisch erzeugten Tageskatalog bleiben anfangs getrennt und lösbar.
 - Bestehende Runden, Einstellungen und Statistiken behalten ihren Speicherbereich. Gespeicherte
   Wörter in offenen Runden werden nach den aktuellen Regeln neu verbunden. Abgeschlossene
   Runden behalten die Regeln und die Wertung ihres Ergebnisses.

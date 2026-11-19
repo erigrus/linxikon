@@ -228,4 +228,4 @@ export function averagePathStrength(path, edges) {
 }
 export function dateKey(date=new Date()) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
 export const PAIRS=[['sonne','buch'],['meer','musik'],['wald','geld'],['eis','liebe'],['hund','computer'],['blume','zug'],['feuer','schule'],['mond','käse'],['berg','brief'],['fisch','könig'],['kaffee','fahrrad'],['brot','stern'],['schlüssel','regen'],['musik','garten'],['papier','meer'],['nacht','fußball'],['gold','vogel'],['schnee','kino'],['apfel','uhr'],['schiff','herz'],['lexikon','brücke'],['traum','salz'],['theater','honig'],['schuh','wolke'],['kleidung','wörterbuch'],['telefon','berg'],['gesundheit','schloss'],['bank','mond']];
-export function dailyPair(key) { const day=Math.floor(Date.parse(key+'T00:00:00Z')/86400000);return [...PAIRS[((day%PAIRS.length)+PAIRS.length)%PAIRS.length]]; }
+export function legacyDailyPair(key) { const day=Math.floor(Date.parse(key+'T00:00:00Z')/86400000);return [...PAIRS[((day%PAIRS.length)+PAIRS.length)%PAIRS.length]]; }

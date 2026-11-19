@@ -9,7 +9,7 @@ const rootSite=name.toLowerCase()===`${owner.toLowerCase()}.github.io`;
 const siteUrl=`https://${owner.toLowerCase()}.github.io/${rootSite?'':name+'/'}`;
 const repositoryUrl=`https://github.com/${repository}`;
 await rm('dist',{recursive:true,force:true});await mkdir('dist');
-for(const file of ['index.html','style.css','app.js','storage.js','word-graph.js','graph-physics.js','engine.js','favicon.svg','data'])await cp(file,`dist/${file}`,{recursive:true});
+for(const file of ['index.html','style.css','app.js','daily-puzzles.js','storage.js','word-graph.js','graph-physics.js','engine.js','favicon.svg','data'])await cp(file,`dist/${file}`,{recursive:true});
 for(const file of ['index.html','app.js']){
   const path=`dist/${file}`;
   const content=(await readFile(path,'utf8')).replaceAll('__SEMANTIO_SITE_URL__',siteUrl).replaceAll('__SEMANTIO_REPOSITORY_URL__',repositoryUrl);

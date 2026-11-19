@@ -40,7 +40,11 @@ Seit 17.11.2026 verwendet Semantio eine kombinierte **Verbindungsstärke von 0�
 
 Die [Matching-Dokumentation](MATCHING.md) beschreibt die Bewertung und ihre Grenzen.
 
-Die 28 Tagespaare rotieren im festen Katalog; Üben wählt zufällig daraus. Für jedes Paar wird beim Datenbau ein Lösungspfad ausschließlich anhand der tatsächlichen Vektorwerte gesucht und mit den ausgelieferten quantisierten Daten getestet. Hinweise verwenden verkürzte, geprüfte Pfade ohne doppelte Grundformen. Während des Spiels können andere gültige Lösungen gefunden werden.
+Seit dem 21.11.2026 verwendet das Tagesrätsel 2.048 automatisch zusammengestellte Wortpaare. Der Generator zieht aus vertrauten, im Wörterbuch verfügbaren Nomen. Beide Startwörter haben unter 10 % Verbindungsstärke. Jedes Paar hat einen mit dem aktiven Matching geprüften Pfad mit zwei bis vier Zwischenwörtern. Im geprüften Wortvorrat gibt es keine Verbindung mit nur einem Zwischenwort. Weitere Lösungen können im größeren Spielwörterbuch möglich sein.
+
+Das lokale Kalenderdatum bestimmt den Eintrag. Kein Wortpaar kommt in den ersten 2.048 Tagen zweimal vor. Danach wiederholt sich die Folge. Die früheren 28 Paare bleiben für das Archiv vor dem Stichtag und für den Übungsmodus verfügbar.
+
+`node scripts/build-daily-puzzles.mjs` erzeugt die Datumsfolge mit dem ausgelieferten Wörterbuch und demselben Matching wie das Spiel. Bei einer Erweiterung bleiben bereits vergebene Termine erhalten.
 
 ## Spielstände und Umbenennung
 

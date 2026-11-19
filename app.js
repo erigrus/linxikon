@@ -1,4 +1,5 @@
-import {loadLexicon, MODEL_VERSION, SCORING_VERSION, PREVIOUS_SCORING_VERSION, LINK_THRESHOLD, MAX_PUZZLE_POINTS, POINTS_PER_WORD, MAX_SIMILARITY_BONUS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, dailyPair, PAIRS} from './engine.js?v=10';
+import {loadLexicon, MODEL_VERSION, SCORING_VERSION, PREVIOUS_SCORING_VERSION, LINK_THRESHOLD, MAX_PUZZLE_POINTS, POINTS_PER_WORD, MAX_SIMILARITY_BONUS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, PAIRS} from './engine.js?v=11';
+import {dailyPair, dailyRoute} from './daily-puzzles.js?v=1';
 import {WordGraph} from './word-graph.js?v=4';
 import {STORAGE_PREFIX,migrateStorage,readStorage,writeStorage} from './storage.js?v=5';
 const $=id=>document.getElementById(id);
@@ -8,7 +9,7 @@ const read=readStorage;
 function write(key,value){if(!writeStorage(key,value))saveAvailable=false;}
 const preferences=read('semantio:settings',{});
 document.body.classList.toggle('dark',!!preferences.dark);
-const today=dateKey();let activeDate=today;
+let today=dateKey(),activeDate=today;
 function feedback(text,error=false){$('feedback').textContent=text;$('feedback').classList.toggle('error',error);}
 
 function title(word){return word.charAt(0).toLocaleUpperCase('de-DE')+word.slice(1);}
@@ -62,6 +63,11 @@ function solutionResult() {
  };
 }
 
+function solutionRoute() {
+ const scheduledRoute = mode === 'daily' ? dailyRoute(activeDate) : null;
+ return scheduledRoute ?? lexicon.route(state.words[0], state.words[1], state.rulesVersion);
+}
+
 function showResult() {
  const result = $('result');
  const heading = document.createElement('h3');
@@ -83,7 +89,7 @@ function showResult() {
   heading.textContent = '50 Wörter – ein Netz voller Ideen.';
   detail.textContent = 'Die beiden Seiten sind noch getrennt. Entdecke eine mögliche Kette oder versuche ein Übungsrätsel.';
   button.textContent = 'Mögliche Verbindung ansehen';
-  button.onclick = () => feedback(lexicon.route(state.words[0], state.words[1], state.rulesVersion).map(title).join(' → '));
+  button.onclick = () => feedback(solutionRoute().map(title).join(' → '));
   result.replaceChildren(heading, detail, button);
  }
  result.hidden = false;
@@ -121,9 +127,31 @@ $('settings').onclick=()=>{openModal(`<h2>Dein Spiel, dein Stil.</h2><label clas
  $('dark-setting').onchange=e=>{preferences.dark=e.target.checked;document.body.classList.toggle('dark',preferences.dark);write('semantio:settings',preferences);};$('share-setting').onchange=e=>{preferences.sharePath=e.target.checked;write('semantio:settings',preferences);};$('archive-open').onclick=()=>{const value=$('archive-date').value;if(value&&value>='2026-01-01'&&value<=today){activeDate=value;start('daily');$('modal').close();}};
 };
 $('privacy').onclick=()=>openModal('<h2>Datenschutz</h2><p>Semantio benötigt kein Konto und setzt keine Analyse- oder Werbe-Cookies. Fortschritt, Statistik und Einstellungen liegen im lokalen Speicher deines Browsers. Du kannst sie über die Website-Daten deines Browsers löschen.</p><p>Die Seite wird von GitHub Pages bereitgestellt. Beim Aufruf verarbeitet GitHub technische Verbindungsdaten, darunter deine IP-Adresse. Die Schriftarten werden von Google Fonts geladen; dabei wird ebenfalls eine Verbindung zu Google hergestellt.</p><p>Beim Teilen wird erst auf deinen Klick die Teilen- oder Zwischenablagefunktion deines Geräts geöffnet. Es gibt keine Bestenliste oder Übermittlung deiner eingegebenen Wörter an einen Spielserver.</p><p><a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub-Datenschutzerklärung ↗</a></p>');
-$('about').onclick=()=>openModal('<h2>Finde, was Wörter verbindet.</h2><p>Semantio ist ein eigenständiges deutsches Wortverbindungsspiel, inspiriert von <a href="https://linxicon.com" target="_blank" rel="noopener">Linxicon von Trainwreck Labs</a>. Dieses Projekt ist nicht mit dem Original verbunden.</p><p>Bedeutungsmodell: <a href="https://fasttext.cc/docs/en/crawl-vectors.html" target="_blank" rel="noopener">Meta fastText cc.de.300</a>, trainiert auf Common Crawl und Wikipedia. Das ist dieselbe öffentliche Modellbasis, die <a href="https://kontexto.de/blog/wie-funktioniert-fasttext/" target="_blank" rel="noopener">Kontexto</a> nennt. Semantio verwendet eine eigene Wortauswahl und Aufbereitung; die Werte sind nicht identisch mit Kontextos Rängen. Die Vektoren werden zentriert, um drei Hauptkomponenten bereinigt und für den Browser komprimiert. Vektordaten: <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.de" target="_blank" rel="noopener">CC BY-SA 3.0</a>, © Meta / fastText-Autoren. Wortlistenfilter: wordfreq (© Robyn Speer und Mitwirkende, CC BY-SA 4.0) und <a href="https://www.openthesaurus.de" target="_blank" rel="noopener">OpenThesaurus</a>, © Daniel Naber und Mitwirkende, CC BY-SA 4.0. Ergänzt werden Wörterbuch-Synonyme aus OpenThesaurus, Grundformen aus der deutschen Lemmaliste von Michal Boleslav Měchura (ODbL 1.0) und Wortfamilien aus DErivCELEX v2 der Universität Stuttgart (CC BY-SA 3.0). Der angezeigte Spielwert kombiniert diese Hinweise mit einer für jedes Wort kalibrierten Kontextnähe; er ist kein reiner Kosinuswert.</p><p>Das tägliche Wortpaar rotiert durch einen festen Rätselkatalog. Der Wechsel erfolgt um Mitternacht in deiner lokalen Zeitzone. Die Übung wählt zufällig ein Paar aus diesem Katalog.</p><p><a href="__SEMANTIO_REPOSITORY_URL__" target="_blank" rel="noopener">Quellcode & technische Dokumentation ↗</a></p>');
-$('clue').onclick=()=>{const route=lexicon.route(state.words[0],state.words[1]),next=route.slice(1,-1).find(w=>!state.words.some(word=>lexicon.canonical(word)===lexicon.canonical(w)));if(next){state.hints++;save();feedback('Ein Wort auf einem möglichen Weg: '+title(next));$('word').value=next;$('word').focus();}else feedback('Alle Wörter eines möglichen Wegs sind vorhanden. Prüfe die Verbindungen.');};
-function tick(){const now=new Date(),midnight=new Date(now);midnight.setHours(24,0,0,0);const minutes=Math.ceil((midnight-now)/60000);$('next-puzzle').textContent=`Nächstes Tagesrätsel in ${Math.floor(minutes/60)} h ${minutes%60} min`;}
-tick();setInterval(tick,30000);
+$('about').onclick=()=>openModal('<h2>Finde, was Wörter verbindet.</h2><p>Semantio ist ein eigenständiges deutsches Wortverbindungsspiel, inspiriert von <a href="https://linxicon.com" target="_blank" rel="noopener">Linxicon von Trainwreck Labs</a>. Dieses Projekt ist nicht mit dem Original verbunden.</p><p>Bedeutungsmodell: <a href="https://fasttext.cc/docs/en/crawl-vectors.html" target="_blank" rel="noopener">Meta fastText cc.de.300</a>, trainiert auf Common Crawl und Wikipedia. Das ist dieselbe öffentliche Modellbasis, die <a href="https://kontexto.de/blog/wie-funktioniert-fasttext/" target="_blank" rel="noopener">Kontexto</a> nennt. Semantio verwendet eine eigene Wortauswahl und Aufbereitung; die Werte sind nicht identisch mit Kontextos Rängen. Die Vektoren werden zentriert, um drei Hauptkomponenten bereinigt und für den Browser komprimiert. Vektordaten: <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.de" target="_blank" rel="noopener">CC BY-SA 3.0</a>, © Meta / fastText-Autoren. Wortlistenfilter: wordfreq (© Robyn Speer und Mitwirkende, CC BY-SA 4.0) und <a href="https://www.openthesaurus.de" target="_blank" rel="noopener">OpenThesaurus</a>, © Daniel Naber und Mitwirkende, CC BY-SA 4.0. Ergänzt werden Wörterbuch-Synonyme aus OpenThesaurus, Grundformen aus der deutschen Lemmaliste von Michal Boleslav Měchura (ODbL 1.0) und Wortfamilien aus DErivCELEX v2 der Universität Stuttgart (CC BY-SA 3.0). Der angezeigte Spielwert kombiniert diese Hinweise mit einer für jedes Wort kalibrierten Kontextnähe; er ist kein reiner Kosinuswert.</p><p>Die Tagespaare werden automatisch zusammengestellt. Die Startwörter haben unter 10 % Verbindungsstärke und lassen sich über eine geprüfte Wortkette verbinden. Das Rätsel wechselt um Mitternacht in deiner lokalen Zeitzone.</p><p><a href="__SEMANTIO_REPOSITORY_URL__" target="_blank" rel="noopener">Quellcode & technische Dokumentation ↗</a></p>');
+$('clue').onclick=()=>{const route=solutionRoute(),next=route.slice(1,-1).find(w=>!state.words.some(word=>lexicon.canonical(word)===lexicon.canonical(w)));if(next){state.hints++;save();feedback('Ein Wort auf einem möglichen Weg: '+title(next));$('word').value=next;$('word').focus();}else feedback('Alle Wörter eines möglichen Wegs sind vorhanden. Prüfe die Verbindungen.');};
+function tick() {
+ const now = new Date();
+ const currentDate = dateKey(now);
+ if (currentDate !== today) {
+  const showingToday = mode === 'daily' && activeDate === today;
+  today = currentDate;
+  if (showingToday) {
+   activeDate = today;
+   if (lexicon) {
+    $('word').value = '';
+    start('daily');
+   }
+  }
+ }
+ const midnight = new Date(now);
+ midnight.setHours(24, 0, 0, 0);
+ const minutes = Math.ceil((midnight - now) / 60000);
+ $('next-puzzle').textContent = `Nächstes Tagesrätsel in ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+tick();
+setInterval(tick, 30000);
+document.addEventListener('visibilitychange', () => {
+ if (!document.hidden) tick();
+});
 async function init(){try{lexicon=await loadLexicon((loaded,total)=>feedback('Bedeutungskarte laden … '+Math.round(loaded/total*100)+' %'));start('daily');if(!read('semantio:seenHelp',false)){write('semantio:seenHelp',true);$('help').click();}}catch(error){feedback('Bedeutungskarte konnte nicht geladen werden. Bitte lade die Seite neu.',true);console.error(error);}}
 init();

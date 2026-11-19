@@ -1,7 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Lexicon,MODEL_VERSION,PREVIOUS_SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,dailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
+import {Lexicon,MODEL_VERSION,PREVIOUS_SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,legacyDailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
+import {dailyPair, dailyRoute} from '../daily-puzzles.js';
+import {DAILY_ROUTES, DAILY_START, MAX_ENDPOINT_SIMILARITY} from '../data/daily/catalog-v1.js';
 const manifest=JSON.parse(readFileSync(new URL('../data/fasttext/manifest.json',import.meta.url)));
 const vectorBytes=Buffer.concat(manifest.shards.map(s=>readFileSync(new URL('../data/fasttext/'+s.file,import.meta.url))));
 const language=Object.fromEntries(['forms','families','synonyms','calibration','direct'].map(name=>[name,JSON.parse(readFileSync(new URL('../data/relationships/'+name+'.json',import.meta.url)))]));
@@ -31,7 +33,7 @@ test('Top-five pruning drops an edge only when neither endpoint ranks it in its 
  const edges=links(words,{score});assert.ok(!edges.some(e=>e.a===0&&e.b===1));assert.ok(edges.some(e=>e.a===0&&e.b===7));
 });
 test('Scores show enough precision at the linking boundary',()=>{assert.equal(formatScore(.49949),'49,9 %');assert.equal(formatScore(.4995),'50,0 %');assert.equal(formatScore(null),'–');});
-test('Daily selection is deterministic and local date avoids UTC rollover',()=>{assert.deepEqual(dailyPair('2026-11-16'),dailyPair('2026-11-16'));assert.equal(dateKey(new Date(2026,0,2,0,1)),'2026-01-02');});
+test('Daily selection is deterministic and local date avoids UTC rollover',()=>{assert.deepEqual(legacyDailyPair('2026-11-16'),legacyDailyPair('2026-11-16'));assert.equal(dateKey(new Date(2026,0,2,0,1)),'2026-01-02');});
 test('Actual shard loader verifies all data and reports completed progress',async()=>{
  let progress=0;const model=await loadLexicon((loaded,total)=>{assert.ok(loaded<=total);progress=loaded/total;},async url=>{
   const path=new URL('../'+url.split('?')[0],import.meta.url),data=readFileSync(path);
@@ -138,4 +140,42 @@ test('The fruit stays separate from the brand while devices connect to their cat
  assert.ok(edges.some(edge => edge.a === 1 && edge.b === 3));
  assert.ok(edges.some(edge => edge.a === 5 && edge.b === 6));
  assert.deepEqual(boardPath(board, edges), []);
+});
+
+
+test('Generated daily catalog uses unique, distant pairs with playable hints', () => {
+ const pairKey = (a, b) => [a, b].sort().join('|');
+ const seen = new Set(PAIRS.map(([a, b]) => pairKey(a, b)));
+ const recent = [];
+ for (const route of DAILY_ROUTES) {
+  const a = route[0], b = route.at(-1);
+  const key = pairKey(a, b);
+  assert.ok(!seen.has(key), key);
+  assert.ok(!recent.some(pair => pair.includes(a) || pair.includes(b)), key);
+  seen.add(key);
+  recent.push([a, b]);
+  if (recent.length > 7) recent.shift();
+  assert.ok(route.length >= 4 && route.length <= 6, key);
+  assert.equal(new Set(route.map(word => lexicon.canonical(word))).size, route.length, key);
+  assert.ok(route.every(word => lexicon.has(word)), key);
+  assert.ok(lexicon.score(a, b) < MAX_ENDPOINT_SIMILARITY, key);
+  for (let i = 1; i < route.length; i++) {
+   assert.ok(lexicon.score(route[i - 1], route[i]) >= LINK_THRESHOLD, key);
+  }
+  const board = [a, b, ...route.slice(1, -1)];
+  assert.equal(boardPath(board, links(board, lexicon)).length, route.length, key);
+ }
+});
+
+test('Daily schedule preserves archive dates and advances through the generated catalog', () => {
+ const start = Date.parse(DAILY_START + 'T00:00:00Z');
+ const dayKey = offset => new Date(start + offset * 86400000).toISOString().slice(0, 10);
+ assert.equal(dailyRoute(dayKey(-1)), null);
+ assert.deepEqual(dailyPair(dayKey(-1)), legacyDailyPair(dayKey(-1)));
+ for (let i = 0; i < DAILY_ROUTES.length; i++) {
+  const route = DAILY_ROUTES[i];
+  assert.deepEqual(dailyRoute(dayKey(i)), route);
+  assert.deepEqual(dailyPair(dayKey(i)), [route[0], route.at(-1)]);
+ }
+ assert.deepEqual(dailyRoute(dayKey(DAILY_ROUTES.length)), DAILY_ROUTES[0]);
 });
