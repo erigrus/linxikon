@@ -2,7 +2,10 @@ export const normalize = word => word.trim().toLocaleLowerCase('de-DE').normaliz
 export const MODEL_VERSION = 'fasttext-de-abtt3-v1';
 export const SCORING_VERSION = 'de-relations-v3';
 export const PREVIOUS_SCORING_VERSION = 'de-relations-v2';
+// Match the displayed percentages, which round to one decimal place.
 export const LINK_THRESHOLD = .4995;
+export const HARD_LINK_THRESHOLD = .5395;
+export const HARD_ATTEMPT_LIMIT = 12;
 const MIN_BASE_COSINE = .21;
 const MIN_CONTEXT_COSINE = .25;
 export const MAX_PUZZLE_POINTS = 10_000;
@@ -175,10 +178,10 @@ export async function loadLexicon(onProgress=()=>{},fetcher=fetch){
   async function worker(){while(next<tasks.length){const task=tasks[next++];await task();}}
   await Promise.all(Array.from({length:4},worker));return new Lexicon(manifest,vectors,language);
 }
-export function links(words,lexicon,version) {
+export function links(words,lexicon,version,threshold=LINK_THRESHOLD) {
   const all=[];
   for(let i=0;i<words.length;i++) for(let j=i+1;j<words.length;j++) {
-    const score=lexicon.score(words[i],words[j],version); if(score>=LINK_THRESHOLD)all.push({a:i,b:j,score});
+    const score=lexicon.score(words[i],words[j],version); if(score>=threshold)all.push({a:i,b:j,score});
   }
   // Preserve reachability when hiding weaker edges in crowded neighbourhoods.
   const selected=new Set(),parent=words.map((_,i)=>i);

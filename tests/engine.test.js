@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Lexicon,MODEL_VERSION,PREVIOUS_SCORING_VERSION,LINK_THRESHOLD,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,legacyDailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
-import {dailyPair, dailyRoute} from '../daily-puzzles.js';
+import {Lexicon,MODEL_VERSION,PREVIOUS_SCORING_VERSION,LINK_THRESHOLD,HARD_LINK_THRESHOLD,HARD_ATTEMPT_LIMIT,normalize,links,boardPath,averagePathStrength,puzzlePoints,formatPuzzlePoints,PAIRS,legacyDailyPair,dateKey,formatScore,loadLexicon} from '../engine.js';
+import {dailyPair, dailyRoute, hardLegacyRoute} from '../daily-puzzles.js';
 import {DAILY_ROUTES, DAILY_START, MAX_ENDPOINT_SIMILARITY} from '../data/daily/catalog-v1.js';
 const manifest=JSON.parse(readFileSync(new URL('../data/fasttext/manifest.json',import.meta.url)));
 const vectorBytes=Buffer.concat(manifest.shards.map(s=>readFileSync(new URL('../data/fasttext/'+s.file,import.meta.url))));
@@ -143,7 +143,29 @@ test('The fruit stays separate from the brand while devices connect to their cat
 });
 
 
-test('Generated daily catalog uses unique, distant pairs with playable hints', () => {
+test('Hardmode requires stronger links and accepts scores at its threshold', () => {
+ const words = ['wasser', 'papier'];
+ assert.equal(links(words, {score: () => .52}).length, 1);
+ assert.equal(links(words, {score: () => .52}, undefined, HARD_LINK_THRESHOLD).length, 0);
+ assert.equal(links(words, {score: () => HARD_LINK_THRESHOLD}, undefined, HARD_LINK_THRESHOLD).length, 1);
+});
+
+test('Archive and practice puzzles have a playable Hardmode solution', () => {
+ for (const [a, b] of PAIRS) {
+  const route = hardLegacyRoute(a, b);
+  const pair = `${a} → ${b}`;
+  assert.equal(route[0], a, pair);
+  assert.equal(route.at(-1), b, pair);
+  assert.deepEqual(hardLegacyRoute(b, a), [...route].reverse(), pair);
+  assert.equal(new Set(route.map(word => lexicon.canonical(word))).size, route.length, pair);
+  assert.ok(route.length <= HARD_ATTEMPT_LIMIT + 2, pair);
+  for (let i = 1; i < route.length; i++) {
+   assert.ok(lexicon.score(route[i - 1], route[i]) >= HARD_LINK_THRESHOLD, pair);
+  }
+ }
+});
+
+test('Generated daily catalog uses unique, distant pairs with playable solutions in both difficulties', () => {
  const pairKey = (a, b) => [a, b].sort().join('|');
  const seen = new Set(PAIRS.map(([a, b]) => pairKey(a, b)));
  const recent = [];
@@ -159,8 +181,9 @@ test('Generated daily catalog uses unique, distant pairs with playable hints', (
   assert.equal(new Set(route.map(word => lexicon.canonical(word))).size, route.length, key);
   assert.ok(route.every(word => lexicon.has(word)), key);
   assert.ok(lexicon.score(a, b) < MAX_ENDPOINT_SIMILARITY, key);
+  assert.ok(route.length <= HARD_ATTEMPT_LIMIT + 2, key);
   for (let i = 1; i < route.length; i++) {
-   assert.ok(lexicon.score(route[i - 1], route[i]) >= LINK_THRESHOLD, key);
+   assert.ok(lexicon.score(route[i - 1], route[i]) >= HARD_LINK_THRESHOLD, key);
   }
   const board = [a, b, ...route.slice(1, -1)];
   assert.equal(boardPath(board, links(board, lexicon)).length, route.length, key);

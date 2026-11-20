@@ -38,3 +38,7 @@
 .score-list li:not(.is-linked) b{color:var(--muted)}
 
 .result .puzzle-points{margin:4px 0;font-size:clamp(20px,4vw,28px);font-weight:700;font-variant-numeric:tabular-nums}
+
+.difficulty-toggle{white-space:nowrap}
+.difficulty-toggle[aria-pressed="true"]{border-color:var(--red);background:var(--surface);color:var(--red)}
+@media(max-width:360px){nav .tab{padding-inline:8px}}
