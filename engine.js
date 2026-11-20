@@ -4,7 +4,8 @@ export const SCORING_VERSION = 'de-relations-v3';
 export const PREVIOUS_SCORING_VERSION = 'de-relations-v2';
 // Match the displayed percentages, which round to one decimal place.
 export const LINK_THRESHOLD = .4995;
-export const HARD_LINK_THRESHOLD = .5395;
+export const PREVIOUS_HARD_LINK_THRESHOLD = .5395;
+export const HARD_LINK_THRESHOLD = .5995;
 export const HARD_ATTEMPT_LIMIT = 12;
 const MIN_BASE_COSINE = .21;
 const MIN_CONTEXT_COSINE = .25;

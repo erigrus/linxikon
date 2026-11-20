@@ -1,5 +1,5 @@
-import {loadLexicon, MODEL_VERSION, SCORING_VERSION, PREVIOUS_SCORING_VERSION, LINK_THRESHOLD, HARD_LINK_THRESHOLD, HARD_ATTEMPT_LIMIT, MAX_PUZZLE_POINTS, POINTS_PER_WORD, MAX_SIMILARITY_BONUS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, PAIRS} from './engine.js?v=12';
-import {dailyPair, dailyRoute, hardLegacyRoute} from './daily-puzzles.js?v=2';
+import {loadLexicon, MODEL_VERSION, SCORING_VERSION, PREVIOUS_SCORING_VERSION, LINK_THRESHOLD, HARD_LINK_THRESHOLD, PREVIOUS_HARD_LINK_THRESHOLD, HARD_ATTEMPT_LIMIT, MAX_PUZZLE_POINTS, POINTS_PER_WORD, MAX_SIMILARITY_BONUS, puzzlePoints, averagePathStrength, formatPuzzlePoints, formatScore, normalize, links, boardPath, dateKey, PAIRS} from './engine.js?v=13';
+import {dailyPair, dailyRoute, hardLegacyRoute} from './daily-puzzles.js?v=3';
 import {WordGraph} from './word-graph.js?v=4';
 import {STORAGE_PREFIX,migrateStorage,readStorage,writeStorage} from './storage.js?v=5';
 const $=id=>document.getElementById(id);
@@ -16,7 +16,7 @@ function feedback(text,error=false){$('feedback').textContent=text;$('feedback')
 
 function title(word){return word.charAt(0).toLocaleUpperCase('de-DE')+word.slice(1);}
 const gamePrefix=STORAGE_PREFIX+MODEL_VERSION+':';
-const currentThreshold = () => hardMode ? HARD_LINK_THRESHOLD : LINK_THRESHOLD;
+const currentThreshold = () => hardMode ? (state?.hardThreshold ?? HARD_LINK_THRESHOLD) : LINK_THRESHOLD;
 const attemptLimit = () => hardMode ? HARD_ATTEMPT_LIMIT : 48;
 const roundPrefix = () => gamePrefix + (hardMode ? 'hard:' : '');
 const roundKey = () => roundPrefix() + (mode === 'daily' ? activeDate : 'practice');
@@ -32,6 +32,12 @@ function start(nextMode,newGame=false){
  state.rulesVersion = state.finished && state.recorded
   ? (state.rulesVersion ?? PREVIOUS_SCORING_VERSION)
   : SCORING_VERSION;
+ if (hardMode) {
+  // Rounds with guesses keep the threshold they started with.
+  state.hardThreshold = state.words.length > 2 && state.hardThreshold !== HARD_LINK_THRESHOLD
+   ? PREVIOUS_HARD_LINK_THRESHOLD
+   : HARD_LINK_THRESHOLD;
+ }
  wordGraph.reset();
  $('daily').classList.toggle('active',mode==='daily');$('practice').classList.toggle('active',mode==='practice');
  $('difficulty').setAttribute('aria-pressed', String(hardMode));
@@ -91,10 +97,11 @@ function solutionResult() {
 }
 
 function solutionRoute() {
- const scheduledRoute = mode === 'daily' ? dailyRoute(activeDate) : null;
+ const newHardRules = hardMode && currentThreshold() === HARD_LINK_THRESHOLD;
+ const scheduledRoute = mode === 'daily' ? dailyRoute(activeDate, newHardRules) : null;
  if (scheduledRoute) return scheduledRoute;
  const [start,end]=state.words;
- return hardMode ? hardLegacyRoute(start,end) : lexicon.route(start,end,state.rulesVersion);
+ return hardMode ? hardLegacyRoute(start,end,!newHardRules) : lexicon.route(start,end,state.rulesVersion);
 }
 
 function showResult() {
@@ -132,7 +139,7 @@ async function share() {
  const route = winning.map(i => title(state.words[i])).join(' → ');
  const {points, summary} = solutionResult();
  const text = [
-  `Semantio · ${mode === 'daily' ? activeDate : 'Übung'}${hardMode ? ' · Hardmode' : ''}`,
+  `Semantio · ${mode === 'daily' ? activeDate : 'Übung'}${hardMode ? ` · Hardmode (${Math.round(currentThreshold()*100)} %)` : ''}`,
   `🔵 ${title(state.words[0])} ↔ ${title(state.words[1])} 🔴`,
   `${formatPuzzlePoints(points)}/${formatPuzzlePoints(MAX_PUZZLE_POINTS)} Punkte · ${summary}${state.hints ? ' · mit Hinweis' : ''}`,
   ...(preferences.sharePath ? [route] : []),
@@ -160,7 +167,7 @@ $('difficulty').onclick=()=>{
  write(STORAGE_PREFIX+'settings',preferences);
  start(mode);
 };
-$('help').onclick=()=>openModal(`<h2>Wörter verbinden. Gedanken folgen.</h2><p>Dein Ziel: Verbinde das blaue und das rote Wort durch eine Kette verwandter Bedeutungen.</p><div class="example-chain"><b>Startwort</b> → verwandtes Wort → … → <b>Zielwort</b></div><ol><li>Gib ein deutsches Wort ein. Es wird mit allen Wörtern auf dem Brett verglichen.</li><li>Ab ${Math.round(currentThreshold()*100)} % Verbindungsstärke entsteht eine Verbindung. Die stärksten Kanten und ein zusammenhängendes Gerüst bleiben sichtbar. So geht ein gültiger Weg auch in einem dichten Netz nicht verloren.</li><li>Sobald ein Weg von Blau nach Rot führt, hast du gewonnen. Von ${formatPuzzlePoints(MAX_PUZZLE_POINTS)} Punkten gehen je ${POINTS_PER_WORD} Punkte für jedes aufs Brett gesetzte Wort und für jedes Zwischenwort im kürzesten Lösungsweg ab. Die durchschnittliche Verbindungsstärke bringt bis zu ${MAX_SIMILARITY_BONUS} Bonuspunkte. Jeder gesparte Versuch oder jedes gesparte Zwischenwort zählt also mehr als der gesamte Bonus. Bei gleich kurzen Lösungswegen zählt der mit der höchsten durchschnittlichen Verbindungsstärke.</li></ol><p>Im normalen Modus hast du Platz für 50 Wörter. Im Tagesrätsel kannst du von Anfang an einen Hinweis holen. Im Hardmode hast du ${HARD_ATTEMPT_LIMIT} Versuche. Wörter verbinden sich ab ${Math.round(HARD_LINK_THRESHOLD*100)} %. Du spielst ohne Hinweise. Nach einer Niederlage kannst du einen möglichen Lösungsweg ansehen.</p><p>Die Verbindungsstärke berücksichtigt Kontextnähe, Synonyme und Wortfamilien. Auch direkte Begriffsbeziehungen zählen, etwa „Armbanduhr ist eine Uhr“. Einzahl, Mehrzahl und erkannte Beugungen werden gemeinsam betrachtet; dieselbe Grundform zählt nur einmal. Bei jedem Wort siehst du den Grund für seine Beziehungen. Der Prozentwert ist ein Spielwert, keine Wahrscheinlichkeit. Auch Gegenteile können durch ihren gemeinsamen Kontext verbunden sein.</p><button class="primary" id="understood">Los geht’s ↗</button>`);
+$('help').onclick=()=>openModal(`<h2>Wörter verbinden. Gedanken folgen.</h2><p>Dein Ziel: Verbinde das blaue und das rote Wort durch eine Kette verwandter Bedeutungen.</p><div class="example-chain"><b>Startwort</b> → verwandtes Wort → … → <b>Zielwort</b></div><ol><li>Gib ein deutsches Wort ein. Es wird mit allen Wörtern auf dem Brett verglichen.</li><li>Ab ${Math.round(currentThreshold()*100)} % Verbindungsstärke entsteht eine Verbindung. Die stärksten Kanten und ein zusammenhängendes Gerüst bleiben sichtbar. So geht ein gültiger Weg auch in einem dichten Netz nicht verloren.</li><li>Sobald ein Weg von Blau nach Rot führt, hast du gewonnen. Von ${formatPuzzlePoints(MAX_PUZZLE_POINTS)} Punkten gehen je ${POINTS_PER_WORD} Punkte für jedes aufs Brett gesetzte Wort und für jedes Zwischenwort im kürzesten Lösungsweg ab. Die durchschnittliche Verbindungsstärke bringt bis zu ${MAX_SIMILARITY_BONUS} Bonuspunkte. Jeder gesparte Versuch oder jedes gesparte Zwischenwort zählt also mehr als der gesamte Bonus. Bei gleich kurzen Lösungswegen zählt der mit der höchsten durchschnittlichen Verbindungsstärke.</li></ol><p>Im normalen Modus hast du Platz für 50 Wörter. Im Tagesrätsel kannst du von Anfang an einen Hinweis holen. Im Hardmode hast du ${HARD_ATTEMPT_LIMIT} Versuche. In neuen Hardmode-Runden verbinden sich Wörter ab ${Math.round(HARD_LINK_THRESHOLD*100)} %. Du spielst ohne Hinweise. Nach einer Niederlage kannst du einen möglichen Lösungsweg ansehen.</p><p>Die Verbindungsstärke berücksichtigt Kontextnähe, Synonyme und Wortfamilien. Auch direkte Begriffsbeziehungen zählen, etwa „Armbanduhr ist eine Uhr“. Einzahl, Mehrzahl und erkannte Beugungen werden gemeinsam betrachtet; dieselbe Grundform zählt nur einmal. Bei jedem Wort siehst du den Grund für seine Beziehungen. Der Prozentwert ist ein Spielwert, keine Wahrscheinlichkeit. Auch Gegenteile können durch ihren gemeinsamen Kontext verbunden sein.</p><button class="primary" id="understood">Los geht’s ↗</button>`);
 $('modal').addEventListener('click',e=>{if(e.target.id==='understood'){$('modal').close();write('semantio:seenHelp',true);}});
 $('stats').onclick=()=>{const s=read(roundPrefix()+'stats',{games:0,wins:0,best:null,daily:[]});openModal(`<h2>Deine Verbindungen${hardMode?' im Hardmode':''}</h2><div class="stat-grid"><div><strong>${Number(s.games)||0}</strong><span>Abgeschlossene Spiele</span></div><div><strong>${s.games?Math.round(s.wins/s.games*100):0}%</strong><span>Gewonnen</span></div><div><strong>${s.best??'–'}</strong><span>Wenigste Zwischenwörter</span></div></div><p>${s.daily.length} Tagesrätsel gelöst. Die Statistik und dein Fortschritt werden nur in diesem Browser gespeichert${saveAvailable?'.':' – der Browserspeicher ist derzeit nicht verfügbar.'}</p>`);};
 $('settings').onclick=()=>{openModal(`<h2>Dein Spiel, dein Stil.</h2><label class="setting-row">Dunkler Modus<input id="dark-setting" type="checkbox" ${preferences.dark?'checked':''}></label><label class="setting-row">Lösungsweg beim Teilen zeigen<input id="share-setting" type="checkbox" ${preferences.sharePath?'checked':''}></label><p>Deine Einstellungen gelten nur für diesen Browser.</p><label class="setting-row">Vergangenes Tagesrätsel<input id="archive-date" type="date" min="2026-01-01" max="${today}" value="${activeDate}"></label><button class="text-button" id="archive-open">Rätsel öffnen ↗</button>`);
